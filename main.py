@@ -14,6 +14,7 @@ files_extensions = ("TXT", "EPUB", "PDF")
 
 reader = VoiceManager()
 voice = Voice()
+menu = MenuManager()
 
 
 def read_files(ext, directory):
@@ -31,7 +32,11 @@ def restart_app():
     exit()
 
 
-menu = MenuManager()
+def get_directory(base_mp3_dir, folder_name):
+    my_mp3_files = os.listdir(base_mp3_dir)
+    if not folder_name in my_mp3_files:
+        os.mkdir(f"{base_mp3_dir}{folder_name}")
+    return base_mp3_dir + folder_name + "/"
 
 
 def app():
@@ -49,7 +54,8 @@ def app():
         elif selection.name == "EPUB":
             my_files = read_files(selection.name, base_txt_dir)
             if my_files:
-                voice.read_epub(reader, base_mp3_dir, my_files)
+                base_mp3_dir = get_directory(base_mp3_dir, my_files[0])
+                voice.read_epub(reader, base_mp3_dir, my_files[1])
         if not my_files:
             print("There are not files to read!")
             restart_app()

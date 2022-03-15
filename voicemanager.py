@@ -93,20 +93,15 @@ class Voice:
 
     @staticmethod
     def read_epub(voice, folder_dir, file_data):
-        my_mp3_files = os.listdir(folder_dir)
-        file_name = file_data[0]
-        file_chaps = file_data[1]
-        if not file_name in my_mp3_files:
-            os.mkdir(f"{folder_dir}{file_name}")
-        folder_dir = folder_dir + file_name + "/"
-        print(f"There are {len(file_chaps)} chapters to read!")
-        for chaps in file_chaps:
+
+        print(f"There are {len(file_data)} chapters to read!")
+        for chaps in file_data:
 
             file_name = chaps + ".mp3"
-            if file_name not in my_mp3_files:
+            if file_name not in file_data:
                 print(f"Reading chapters {chaps}...")
                 voice.engine.setProperty("voice", voice.voice.id)
-                voice.engine.save_to_file(file_chaps[chaps], f"{folder_dir}{file_name}")
+                voice.engine.save_to_file(file_data[chaps], f"{folder_dir}{file_name}")
                 voice.engine.runAndWait()
                 print("Done! :)")
             else:
