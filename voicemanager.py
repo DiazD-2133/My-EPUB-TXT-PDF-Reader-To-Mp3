@@ -77,15 +77,15 @@ class VoiceManager:
 
 class Voice:
     @staticmethod
-    def read_text(voice, folder_dir, files_dict):
+    def read_text(voice, folder_dir, files_data):
+        my_mp3_files = os.listdir(folder_dir)
 
-        for key in files_dict:
-            my_mp3_files = os.listdir(folder_dir)
-            file_name = key + ".mp3"
+        for data_name in files_data:
+            file_name = data_name + ".mp3"
             if file_name not in my_mp3_files:
-                print(f"Reading {key}...")
+                print(f"Reading {data_name}...")
                 voice.engine.setProperty("voice", voice.voice.id)
-                voice.engine.save_to_file(files_dict[key], f"{folder_dir}{file_name}")
+                voice.engine.save_to_file(files_data[data_name], f"{folder_dir}{file_name}")
                 voice.engine.runAndWait()
                 print(f"Done! The file was created in {folder_dir}! :)")
             else:
