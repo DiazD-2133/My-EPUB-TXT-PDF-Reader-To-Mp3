@@ -50,12 +50,12 @@ def app():
         if selection.name == "TXT":
             my_files = read_files(selection.name, base_txt_dir)
             if my_files:
-                voice.read_text(reader, base_mp3_dir, my_files)
+                voice.read(reader, base_mp3_dir, my_files)
         elif selection.name == "EPUB":
             my_files = read_files(selection.name, base_txt_dir)
             if my_files:
                 base_mp3_dir = get_directory(base_mp3_dir, my_files[0])
-                voice.read_epub(reader, base_mp3_dir, my_files[1])
+                voice.read(reader, base_mp3_dir, my_files[1])
         if not my_files:
             print("There are not files to read!")
             restart_app()
