@@ -78,10 +78,15 @@ class ReadEPUB(OpenFile):
                 book = epub.read_epub(file_dir)
 
                 self.book = get_index(file_dir)
+
                 for item in book.get_items():
                     if item.get_type() == ebooklib.ITEM_DOCUMENT:
                         item_name = item.get_name()
                         item_name = get_item_name(item_name)
-                        self.book[item_name] = self.chap2text(item.get_content())
+                        if item_name in self.book:
+                            self.book[item_name] = self.chap2text(item.get_content())
+                        else:
+                            item_name = f"x{item_name}"
+                            self.book[item_name] = self.chap2text(item.get_content())
 
             return file_name, self.book
