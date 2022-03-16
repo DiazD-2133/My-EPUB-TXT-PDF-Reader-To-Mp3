@@ -1,9 +1,31 @@
 from abc import ABC, abstractmethod
 import os
 
+import zipfile
+
 import ebooklib
 from ebooklib import epub
 from bs4 import BeautifulSoup
+
+
+def get_index(file_dir):
+    archive = zipfile.ZipFile(file_dir)
+    web_page = archive.read("OEBPS/content.opf")
+    soup = BeautifulSoup(web_page, "html.parser")
+    contents = soup.find_all(name="itemref")
+    book = {}
+    for c in contents:
+        book[c.get("idref").split(".")[0]] = ""
+    return book
+
+
+def get_item_name(name):
+    item_name = ""
+    if "/" in name:
+        item_name = name.split("/")[1]
+    item_name = item_name.split(".")[0]
+    return item_name
+
 
 
 class OpenFile(ABC):
@@ -33,7 +55,7 @@ class ReadTxt(OpenFile):
 class ReadEPUB(OpenFile):
     def __init__(self):
         self.files = []
-        self.files_dict = {}
+        self.book = {}
 
         self.blacklist = ['[document]', 'noscript', 'header', 'html', 'meta', 'head', 'input', 'script']
 
@@ -48,9 +70,6 @@ class ReadEPUB(OpenFile):
 
     def read_files(self, folder):
         self.files = os.listdir(folder)
-        cont = 0
-        zeros = "000"
-        # mark = ""
         for file in self.files:
             file_dir = folder + file
             file_name = file.split(".")[0]
@@ -58,29 +77,11 @@ class ReadEPUB(OpenFile):
             if file_ext == "epub":
                 book = epub.read_epub(file_dir)
 
-                chapters = []
+                self.book = get_index(file_dir)
                 for item in book.get_items():
                     if item.get_type() == ebooklib.ITEM_DOCUMENT:
-                        chapters.append(item.get_content())
+                        item_name = item.get_name()
+                        item_name = get_item_name(item_name)
+                        self.book[item_name] = self.chap2text(item.get_content())
 
-                for chapter in chapters:
-                    text = self.chap2text(chapter)
-
-                    if cont > 100:
-                        zeros = "0"
-                    elif cont < 10:
-                        zeros = "000"
-                    elif cont > 9:
-                        zeros = "00"
-
-                    # mark += f"{zeros}{cont}" + "\n" + text
-
-                    self.files_dict[f"{zeros}{cont} - {file_name}"] = text
-                    cont += 1
-                # with open(f"my_mp3_books_library/{file_name}.txt", mode="w") as new_book:
-                #     new_book.write(mark)
-
-            return file_name, self.files_dict
-
-
-
+            return file_name, self.book

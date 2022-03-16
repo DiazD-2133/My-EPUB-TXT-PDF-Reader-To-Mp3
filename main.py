@@ -26,6 +26,16 @@ def read_files(ext, directory):
         return my_text.read_files(directory)
 
 
+def clean_book_content(book):
+    empty_chapters = []
+    for chapter in book:
+        if len(book[chapter]) < 5:
+            empty_chapters.append(chapter)
+    for chapter in empty_chapters:
+        book.pop(chapter)
+    return book
+
+
 def restart_app():
     print("Restarting...")
     os.system("python main.py")
@@ -55,7 +65,8 @@ def app():
             my_files = read_files(selection.name, base_txt_dir)
             if my_files:
                 base_mp3_dir = get_directory(base_mp3_dir, my_files[0])
-                voice.read(reader, base_mp3_dir, my_files[1])
+                book = clean_book_content(my_files[1])
+                voice.read(reader, base_mp3_dir, book)
         if not my_files:
             print("There are not files to read!")
             restart_app()
