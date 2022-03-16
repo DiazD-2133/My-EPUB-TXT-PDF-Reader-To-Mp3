@@ -27,7 +27,6 @@ def get_item_name(name):
     return item_name
 
 
-
 class OpenFile(ABC):
     @abstractmethod
     def read_files(self, folder):
@@ -86,6 +85,7 @@ class ReadEPUB(OpenFile):
                         if item_name in self.book:
                             self.book[item_name] = self.chap2text(item.get_content())
                         else:
+                            # Trying to fix some Sanderson´s books issues
                             item_name = f"x{item_name}"
                             self.book[item_name] = self.chap2text(item.get_content())
 

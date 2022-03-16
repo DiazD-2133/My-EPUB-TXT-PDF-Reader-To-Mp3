@@ -29,7 +29,7 @@ def read_files(ext, directory):
 def clean_book_content(book):
     empty_chapters = []
     for chapter in book:
-        if len(book[chapter]) < 5:
+        if len(book[chapter]) < 21:
             empty_chapters.append(chapter)
     for chapter in empty_chapters:
         book.pop(chapter)
