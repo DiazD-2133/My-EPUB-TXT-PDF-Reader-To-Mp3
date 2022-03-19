@@ -8,6 +8,14 @@ from ebooklib import epub
 from bs4 import BeautifulSoup
 
 
+def get_names(*args):
+    if args:
+        dirs_and_files = os.listdir(args[0])
+    else:
+        dirs_and_files = os.listdir()
+    return dirs_and_files
+
+
 def get_index(file_dir):
     archive = zipfile.ZipFile(file_dir)
     web_page = archive.read("OEBPS/content.opf")
@@ -34,27 +42,33 @@ class OpenFile(ABC):
 
 
 class ReadTxt(OpenFile):
-    def __init__(self):
-        self.files = []
+    def __init__(self, files_list, mp3_dir):
+        self.files = files_list
         self.files_dict = {}
+        self.mp3_files = get_names(mp3_dir)
 
     def read_files(self, folder):
-        self.files = os.listdir(folder)
         for file in self.files:
-            file_dir = folder + file
-            with open(file_dir, "r", encoding='utf-8') as data:
-                text = data.read()
+            mp3_file_name = file.replace(".txt", ".mp3")
+            if mp3_file_name in self.mp3_files:
+                print(f"File named = {mp3_file_name} already exists!")
+            else:
 
-                file_name = file.split(".txt")[0]
-                self.files_dict[file_name] = text
+                file_dir = folder + file
+                with open(file_dir, "r", encoding='utf-8') as data:
+                    text = data.read()
+
+                    file_name = file.split(".txt")[0]
+                    self.files_dict[file_name] = text
 
         return self.files_dict
 
 
 class ReadEPUB(OpenFile):
-    def __init__(self):
-        self.files = []
+    def __init__(self, files_list, mp3_dir):
+        self.files = files_list
         self.book = {}
+        self.mp3_files = get_names(mp3_dir)
 
         self.blacklist = ['[document]', 'noscript', 'header', 'html', 'meta', 'head', 'input', 'script']
 
@@ -68,25 +82,28 @@ class ReadEPUB(OpenFile):
         return output
 
     def read_files(self, folder):
-        self.files = os.listdir(folder)
         for file in self.files:
-            file_dir = folder + file
             file_name = file.split(".")[0]
-            file_ext = file.split(".")[1]
-            if file_ext == "epub":
-                book = epub.read_epub(file_dir)
 
-                self.book = get_index(file_dir)
+            if file_name in self.mp3_files:
+                print(f"File named = {file_name} already exists")
+            else:
+                file_dir = folder + file
+                file_ext = file.split(".")[1]
+                if file_ext == "epub":
+                    book = epub.read_epub(file_dir)
 
-                for item in book.get_items():
-                    if item.get_type() == ebooklib.ITEM_DOCUMENT:
-                        item_name = item.get_name()
-                        item_name = get_item_name(item_name)
-                        if item_name in self.book:
-                            self.book[item_name] = self.chap2text(item.get_content())
-                        else:
-                            # Trying to fix some Sanderson´s books issues
-                            item_name = f"x{item_name}"
-                            self.book[item_name] = self.chap2text(item.get_content())
+                    self.book = get_index(file_dir)
 
-            return file_name, self.book
+                    for item in book.get_items():
+                        if item.get_type() == ebooklib.ITEM_DOCUMENT:
+                            item_name = item.get_name()
+                            item_name = get_item_name(item_name)
+                            if item_name in self.book:
+                                self.book[item_name] = self.chap2text(item.get_content())
+                            else:
+                                # Trying to fix some Sanderson´s books issues
+                                item_name = f"x{item_name}"
+                                self.book[item_name] = self.chap2text(item.get_content())
+
+                return file_name, self.book

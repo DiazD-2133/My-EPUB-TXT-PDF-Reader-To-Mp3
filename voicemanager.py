@@ -77,30 +77,32 @@ class VoiceManager:
 
 class Voice:
     @staticmethod
-    def read(voice, folder_dir, files_data):
-        my_mp3_files = os.listdir(folder_dir)
-        cont = 0
+    def read(voice, file_extension, folder_dir, files_data):
+        count = 0
         zeros = "000"
 
         print(f"\nThere are {len(files_data)} chapters to read!\n")
 
         for data_name in files_data:
             file_name = data_name + ".mp3"
-            if file_name not in my_mp3_files:
-                print(f"Reading {data_name}...")
+            print(f"Reading {data_name}...")
 
-                if cont > 100:
+            if file_extension == "TXT":
+                voice.engine.setProperty("voice", voice.voice.id)
+                voice.engine.save_to_file(files_data[data_name], f"{folder_dir}{file_name}")
+                voice.engine.runAndWait()
+                print(f"Done! The file was created in {folder_dir}! :)")
+            else:
+                if count > 100:
                     zeros = "0"
-                elif cont < 10:
+                elif count < 10:
                     zeros = "000"
-                elif cont > 9:
+                elif count > 9:
                     zeros = "00"
 
                 voice.engine.setProperty("voice", voice.voice.id)
-                voice.engine.save_to_file(files_data[data_name], f"{folder_dir}{zeros}{cont} - {file_name}")
+                voice.engine.save_to_file(files_data[data_name], f"{folder_dir}{zeros}{count} - {file_name}")
                 voice.engine.runAndWait()
                 print(f"Done! The file was created in {folder_dir}! :)")
 
-                cont += 1
-            else:
-                print(f"File {file_name} already exists")
+                count += 1
