@@ -25,6 +25,16 @@ def get_item_name(name):
     return item_name
 
 
+def clean_book_content(book):
+    empty_chapters = []
+    for chapter in book:
+        if len(book[chapter]) < 21:
+            empty_chapters.append(chapter)
+    for chapter in empty_chapters:
+        book.pop(chapter)
+    return book
+
+
 class OpenFile(ABC):
     @abstractmethod
     def read_files(self, folder):
@@ -41,14 +51,14 @@ class ReadTxt(OpenFile):
         for file in self.files:
             mp3_file_name = file.replace(".txt", ".mp3")
             if mp3_file_name in self.mp3_files:
-                print(f"File named = {mp3_file_name} already exists!")
+                print(f"File named = {mp3_file_name.split('.')[0]} already exists!")
             else:
 
                 file_dir = folder + file
                 with open(file_dir, "r", encoding='utf-8') as data:
                     text = data.read()
 
-                    file_name = file.split(".txt")[0]
+                    file_name = file.split(".")[0]
                     self.files_dict[file_name] = text
 
         return self.files_dict
@@ -86,6 +96,7 @@ class ReadEPUB(OpenFile):
         return book
 
     def read_files(self, folder):
+        books = []
         for file in self.files:
             book_name = file.split(".")[0]
 
@@ -110,4 +121,7 @@ class ReadEPUB(OpenFile):
                                 item_name = f"x{item_name}"
                                 self.book[item_name] = self.clean(item.get_content())
 
-                return book_name, self.book
+                temporal_book = (book_name, self.book)
+                books.append(temporal_book)
+
+        return books
