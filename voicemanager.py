@@ -1,5 +1,5 @@
 import pyttsx3
-import os
+
 
 with open("voice.txt", "r") as voice_data:
     my_voice_data = voice_data.readlines()

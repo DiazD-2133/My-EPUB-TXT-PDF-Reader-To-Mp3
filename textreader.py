@@ -1,11 +1,12 @@
-from abc import ABC, abstractmethod
 import os
 
+from abc import ABC, abstractmethod
+
 import zipfile
+from bs4 import BeautifulSoup
 
 import ebooklib
 from ebooklib import epub
-from bs4 import BeautifulSoup
 
 
 def get_names(*args):
@@ -14,17 +15,6 @@ def get_names(*args):
     else:
         dirs_and_files = os.listdir()
     return dirs_and_files
-
-
-def get_index(file_dir):
-    archive = zipfile.ZipFile(file_dir)
-    web_page = archive.read("OEBPS/content.opf")
-    soup = BeautifulSoup(web_page, "html.parser")
-    contents = soup.find_all(name="itemref")
-    book = {}
-    for c in contents:
-        book[c.get("idref").split(".")[0]] = ""
-    return book
 
 
 def get_item_name(name):
@@ -72,7 +62,7 @@ class ReadEPUB(OpenFile):
 
         self.blacklist = ['[document]', 'noscript', 'header', 'html', 'meta', 'head', 'input', 'script']
 
-    def chap2text(self, chap):
+    def clean(self, chap):
         output = ''
         soup = BeautifulSoup(chap, 'html.parser')
         text = soup.find_all(text=True)
@@ -81,29 +71,43 @@ class ReadEPUB(OpenFile):
                 output += '{} '.format(t)
         return output
 
+    @staticmethod
+    def get_epub_index(file_dir):
+        archive = zipfile.ZipFile(file_dir)
+
+        web_page = archive.read("OEBPS/content.opf")
+
+        soup = BeautifulSoup(web_page, "html.parser")
+        contents = soup.find_all(name="itemref")
+
+        book = {}
+        for c in contents:
+            book[c.get("idref").split(".")[0]] = ""
+        return book
+
     def read_files(self, folder):
         for file in self.files:
-            file_name = file.split(".")[0]
+            book_name = file.split(".")[0]
 
-            if file_name in self.mp3_files:
-                print(f"File named = {file_name} already exists")
+            if book_name in self.mp3_files:
+                print(f"File named = {book_name} already exists")
             else:
                 file_dir = folder + file
                 file_ext = file.split(".")[1]
                 if file_ext == "epub":
                     book = epub.read_epub(file_dir)
 
-                    self.book = get_index(file_dir)
+                    self.book = self.get_epub_index(file_dir)
 
                     for item in book.get_items():
                         if item.get_type() == ebooklib.ITEM_DOCUMENT:
                             item_name = item.get_name()
                             item_name = get_item_name(item_name)
                             if item_name in self.book:
-                                self.book[item_name] = self.chap2text(item.get_content())
+                                self.book[item_name] = self.clean(item.get_content())
                             else:
                                 # Trying to fix some Sanderson´s books issues
                                 item_name = f"x{item_name}"
-                                self.book[item_name] = self.chap2text(item.get_content())
+                                self.book[item_name] = self.clean(item.get_content())
 
-                return file_name, self.book
+                return book_name, self.book
