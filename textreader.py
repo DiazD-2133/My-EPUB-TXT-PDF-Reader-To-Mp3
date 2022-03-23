@@ -1,5 +1,3 @@
-import os
-
 from abc import ABC, abstractmethod
 
 import zipfile
@@ -8,21 +6,7 @@ from bs4 import BeautifulSoup
 import ebooklib
 from ebooklib import epub
 
-
-def get_names(*args):
-    if args:
-        dirs_and_files = os.listdir(args[0])
-    else:
-        dirs_and_files = os.listdir()
-    return dirs_and_files
-
-
-def get_item_name(name):
-    item_name = ""
-    if "/" in name:
-        item_name = name.split("/")[1]
-    item_name = item_name.split(".")[0]
-    return item_name
+import files_dirs as files_dirs_manager
 
 
 def clean_book_content(book):
@@ -45,7 +29,7 @@ class ReadTxt(OpenFile):
     def __init__(self, files_list, mp3_dir):
         self.files = files_list
         self.files_dict = {}
-        self.mp3_files = get_names(mp3_dir)
+        self.mp3_files = files_dirs_manager.get_names(mp3_dir)
 
     def read_files(self, folder):
         for file in self.files:
@@ -68,7 +52,7 @@ class ReadEPUB(OpenFile):
     def __init__(self, files_list, mp3_dir):
         self.files = files_list
         self.book = {}
-        self.mp3_files = get_names(mp3_dir)
+        self.mp3_files = files_dirs_manager.get_names(mp3_dir)
 
         self.blacklist = ['[document]', 'noscript', 'header', 'html', 'meta', 'head', 'input', 'script']
 
@@ -82,17 +66,30 @@ class ReadEPUB(OpenFile):
         return output
 
     @staticmethod
-    def get_epub_index(file_dir):
+    def get_epub_index(file_dir, chaps_list):
         archive = zipfile.ZipFile(file_dir)
+        new_chaps_list = []
 
-        web_page = archive.read("OEBPS/content.opf")
+        try:
+            web_page = archive.read("OEBPS/content.opf")
+        except KeyError:
+            web_page = archive.read("content.opf")
 
         soup = BeautifulSoup(web_page, "html.parser")
         contents = soup.find_all(name="itemref")
 
         book = {}
-        for c in contents:
-            book[c.get("idref").split(".")[0]] = ""
+        for content in contents:
+            book[content.get("idref").split(".")[0]] = ""
+
+        # Some books doesn't have the same idref-html name
+        for book_chap in book:
+            if book_chap not in chaps_list:
+                new_chap = soup.find(id=f"{book_chap}")
+                new_chaps_list.append(new_chap.get("href").split(".")[0])
+        if new_chaps_list:
+            for chap in new_chaps_list:
+                book[chap] = ""
         return book
 
     def read_files(self, folder):
@@ -107,13 +104,19 @@ class ReadEPUB(OpenFile):
                 file_ext = file.split(".")[1]
                 if file_ext == "epub":
                     book = epub.read_epub(file_dir)
+                    item_names = []
 
-                    self.book = self.get_epub_index(file_dir)
+                    for item in book.get_items():
+                        if item.get_type() == ebooklib.ITEM_DOCUMENT:
+                            item_name = files_dirs_manager.get_item_name(item.get_name())
+                            item_names.append(item_name)
+
+                    self.book = self.get_epub_index(file_dir, item_names)
 
                     for item in book.get_items():
                         if item.get_type() == ebooklib.ITEM_DOCUMENT:
                             item_name = item.get_name()
-                            item_name = get_item_name(item_name)
+                            item_name = files_dirs_manager.get_item_name(item_name)
                             if item_name in self.book:
                                 self.book[item_name] = self.clean(item.get_content())
                             else:
@@ -125,3 +128,13 @@ class ReadEPUB(OpenFile):
                 books.append(temporal_book)
 
         return books
+
+
+def read_files(ext, directory, base_mp3_dir):
+    files_list = files_dirs_manager.get_names(directory)
+    if ext == "TXT":
+        my_text = ReadTxt(files_list, base_mp3_dir)
+        return my_text.read_files(directory)
+    elif ext == "EPUB":
+        my_text = ReadEPUB(files_list, base_mp3_dir)
+        return my_text.read_files(directory)

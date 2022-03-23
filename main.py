@@ -1,10 +1,13 @@
 import os
-import textreader
+
+import textreader as reader_manager
+import files_dirs as files_dirs_manager
+
 from voicemanager import VoiceManager, Voice
 from menumanager import MenuManager
 
 
-project_dirs = textreader.get_names()
+project_dirs = files_dirs_manager.get_names()
 
 needed_folders = ["my_txt_library", "my_mp3_books_library", "single_file_mp3_library", "my_books_library"]
 my_files_extension = ("TXT", "EPUB", "PDF")
@@ -19,28 +22,10 @@ voice = Voice()
 menu = MenuManager()
 
 
-def read_files(ext, directory, base_mp3_dir):
-    files_list = textreader.get_names(directory)
-    if ext == "TXT":
-        my_text = textreader.ReadTxt(files_list, base_mp3_dir)
-        return my_text.read_files(directory)
-    elif ext == "EPUB":
-        my_text = textreader.ReadEPUB(files_list, base_mp3_dir)
-        return my_text.read_files(directory)
-
-
 def restart_app():
     print("Restarting...")
     os.system("python main.py")
     exit()
-
-
-def create_mp3_directory(base_mp3_dir, folder_name):
-    my_mp3_directories = os.listdir(base_mp3_dir)
-    if not folder_name in my_mp3_directories:
-        print(f"{base_mp3_dir}{folder_name}")
-        os.mkdir(f"{base_mp3_dir}{folder_name}")
-    return base_mp3_dir + folder_name + "/"
 
 
 def app():
@@ -54,16 +39,18 @@ def app():
         base_mp3_dir = selection.value[1]
 
         if file_extension == "TXT":
-            temporal_books_library = read_files(file_extension, base_file_dir, base_mp3_dir)
+            temporal_books_library = reader_manager.read_files(file_extension, base_file_dir, base_mp3_dir)
             if temporal_books_library:
                 voice.read(reader, file_extension, base_mp3_dir, temporal_books_library)
         elif file_extension == "EPUB":
-            temporal_books_library = read_files(file_extension, base_file_dir, base_mp3_dir)
+            temporal_books_library = reader_manager.read_files(file_extension, base_file_dir, base_mp3_dir)
+            print(f"There are {len(temporal_books_library)} books to read!")
             for epub_book in temporal_books_library:
+                base_mp3_dir = selection.value[1]
                 book = epub_book[1]
+                book = reader_manager.clean_book_content(book)
                 if book:
-                    base_mp3_dir = create_mp3_directory(base_mp3_dir, epub_book[0])
-                    book = textreader.clean_book_content(book)
+                    base_mp3_dir = files_dirs_manager.create_mp3_directory(base_mp3_dir, epub_book[0])
                     voice.read(reader, file_extension, base_mp3_dir, book)
                 else:
                     temporal_books_library = temporal_books_library[1]
