@@ -81,9 +81,10 @@ class Voice:
         count = 0
         zeros = "000"
 
-        print(f"\nThere are {len(files_data)} chapters to read!\n")
-
         for data_name in files_data:
+
+            print(f"\nThere are {len(files_data) - count} items to read!\n")
+
             file_name = data_name + ".mp3"
             print(f"Reading {data_name}...")
 
@@ -92,7 +93,10 @@ class Voice:
                 voice.engine.save_to_file(files_data[data_name], f"{folder_dir}{file_name}")
                 voice.engine.runAndWait()
                 print(f"Done! The file was created in {folder_dir}! :)")
+
+                count += 1
             else:
+
                 if count > 100:
                     zeros = "0"
                 elif count < 10:
