@@ -58,9 +58,9 @@ def app():
             print("There are not files to read!")
             restart_app()
     elif selection.name == "LANGUAGE":
-        reader.selectReaderLanguage()
+        reader.select_language()
     elif selection.name == "SPEEDRATE":
-        reader.changeSpeedRate()
+        reader.change_speedRate()
     elif selection.name == "RESET":
         restart_app()
     elif selection.name == "CLOSE":

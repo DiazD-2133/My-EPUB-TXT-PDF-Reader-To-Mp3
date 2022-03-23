@@ -5,6 +5,11 @@ with open("voice.txt", "r") as voice_data:
     my_voice_data = voice_data.readlines()
 
 
+def save_changes(my_language, speed_rate):
+    with open("voice.txt", "w") as my_new_voice_data:
+        my_new_voice_data.write(f"{my_language}\n{speed_rate}")
+
+
 class VoiceManager:
     def __init__(self):
         self.my_language = int(my_voice_data[0])
@@ -17,15 +22,15 @@ class VoiceManager:
         self.voices = self.engine.getProperty("voices")
         self.voice = self.voices[self.my_language]
 
-    def chooseSpeedRate(self):
+    def choose_speedRate(self):
         try:
             self.speed_rate = int(input("\nSelect the voice speed rated\n"
                                         "Recommended a number between 140(slower) and 160(faster): "))
         except ValueError:
             print("\nYou must choose a number!\n")
-            self.chooseSpeedRate()
+            self.choose_speedRate()
 
-    def changeSpeedRate(self):
+    def change_speedRate(self):
         print(f"\nActual speed rate: {self.speed_rate}\n")
         change_speedR = input("Do you want to change the voice speed rate\n"
                               "Select y/n: ").lower()
@@ -35,13 +40,14 @@ class VoiceManager:
             change_speedR = input("Do you want to change the voice speed rate\n"
                                   "Select y/n: ").lower()
         if change_speedR == "y":
-            self.chooseSpeedRate()
+            self.choose_speedRate()
             self.engine.setProperty("rate", self.speed_rate)
-            with open("voice.txt", "w") as my_new_voice_data:
-                my_new_voice_data.write(f"{self.my_language}\n{self.speed_rate}")
+
+            save_changes(self.my_language, self.speed_rate)
+
             print(f"Voice speed rate was changed to {self.speed_rate}!")
 
-    def selectReaderLanguage(self):
+    def select_language(self):
         i = 1
         options = []
         actual_language = self.voice.name.split('-')[1].split()[0]
@@ -62,17 +68,18 @@ class VoiceManager:
                 options.append(str(i))
                 i += 1
 
-            choose = input("\nChoose voice by its number: ")
-            while not choose in options:
+            self.my_language = input("\nChoose voice by its number: ")
+            while not self.my_language in options:
                 print("You must choose one of the enumerated options")
-                choose = input("\nChoose voice by its number: ")
-            choose = int(choose) - 1
-            self.voice = self.voices[choose]
-            choose = str(choose)
-            with open("voice.txt", "w") as my_new_voice_data:
-                my_new_voice_data.write(f"{choose}\n{self.speed_rate}")
-                actual_language = self.voice.name.split('-')[1].split()[0]
-                print(f"\nLanguage was changed to {actual_language}!")
+                self.my_language = input("\nChoose voice by its number: ")
+            self.my_language = int(self.my_language) - 1
+            self.voice = self.voices[self.my_language]
+            self.my_language = str(self.my_language)
+
+            save_changes(self.my_language, self.speed_rate)
+
+            actual_language = self.voice.name.split('-')[1].split()[0]
+            print(f"\nLanguage was changed to {actual_language}!")
 
 
 class Voice:
