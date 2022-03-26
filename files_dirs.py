@@ -1,4 +1,6 @@
 import os
+import zipfile
+from bs4 import BeautifulSoup
 
 
 def get_names(*args):
@@ -21,3 +23,17 @@ def create_mp3_directory(base_mp3_dir, folder_name):
     if not folder_name in my_mp3_directories:
         os.mkdir(f"{base_mp3_dir}{folder_name}")
     return base_mp3_dir + folder_name + "/"
+
+
+def get_opf(file_dir):
+    archive = zipfile.ZipFile(file_dir)
+
+    # there are books that doesn't haven't .opf files in its folder
+    try:
+        web_page = archive.read("OEBPS/content.opf")
+    except KeyError:
+        web_page = archive.read("content.opf")
+
+    soup = BeautifulSoup(web_page, "html.parser")
+
+    return soup

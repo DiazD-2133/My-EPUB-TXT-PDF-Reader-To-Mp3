@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 
-import zipfile
 from bs4 import BeautifulSoup
 
 import ebooklib
@@ -16,7 +15,7 @@ voice = Voice()
 def clean_book_content(book):
     empty_chapters = []
     for chapter in book:
-        if len(book[chapter]) < 21:
+        if len(book[chapter]) < 30:
             empty_chapters.append(chapter)
     for chapter in empty_chapters:
         book.pop(chapter)
@@ -70,30 +69,29 @@ class ReadEPUB(OpenFile):
         return output
 
     @staticmethod
-    def get_epub_index(file_dir, chaps_list):
-        archive = zipfile.ZipFile(file_dir)
+    def get_epub_index(file_dir):
+        index = files_dirs_manager.get_opf(file_dir)
+        contents = index.find_all(name="itemref")
+
         new_chaps_list = []
+        book = {}
 
-        try:
-            web_page = archive.read("OEBPS/content.opf")
-        except KeyError:
-            web_page = archive.read("content.opf")
+        # Get order an id
+        for content in contents:
+            book[content.get("idref")] = ""
 
-        soup = BeautifulSoup(web_page, "html.parser")
-        contents = soup.find_all(name="itemref")
+        # Get chaps name
+        for book_chap in book:
+            new_chap = index.find(id=f"{book_chap}")
+
+            new_chap_name = new_chap.get("href").split(".")[0]
+            if "/" in new_chap_name:
+                new_chap_name = new_chap_name.split("/")[1]
+            new_chaps_list.append(new_chap_name)
 
         book = {}
-        for content in contents:
-            book[content.get("idref").split(".")[0]] = ""
-
-        # Some books doesn't have the same idref-html name
-        for book_chap in book:
-            if book_chap not in chaps_list:
-                new_chap = soup.find(id=f"{book_chap}")
-                new_chaps_list.append(new_chap.get("href").split(".")[0])
-        if new_chaps_list:
-            for chap in new_chaps_list:
-                book[chap] = ""
+        for chap in new_chaps_list:
+            book[chap] = ""
         return book
 
     def read_files(self, folder):
@@ -108,25 +106,14 @@ class ReadEPUB(OpenFile):
                 file_ext = file.split(".")[1]
                 if file_ext == "epub":
                     book = epub.read_epub(file_dir)
-                    item_names = []
 
-                    for item in book.get_items():
-                        if item.get_type() == ebooklib.ITEM_DOCUMENT:
-                            item_name = files_dirs_manager.get_item_name(item.get_name())
-                            item_names.append(item_name)
-
-                    self.book = self.get_epub_index(file_dir, item_names)
+                    self.book = self.get_epub_index(file_dir)
 
                     for item in book.get_items():
                         if item.get_type() == ebooklib.ITEM_DOCUMENT:
                             item_name = item.get_name()
                             item_name = files_dirs_manager.get_item_name(item_name)
-                            if item_name in self.book:
-                                self.book[item_name] = self.clean(item.get_content())
-                            else:
-                                # Trying to fix some Sanderson´s books issues
-                                item_name = f"x{item_name}"
-                                self.book[item_name] = self.clean(item.get_content())
+                            self.book[item_name] = self.clean(item.get_content())
 
                 temporal_book = (book_name, self.book)
                 books.append(temporal_book)
@@ -134,7 +121,7 @@ class ReadEPUB(OpenFile):
         return books
 
 
-def read_files(selection):
+def get_temporal_books(selection):
     ext = selection.name
 
     directory = selection.value[0]

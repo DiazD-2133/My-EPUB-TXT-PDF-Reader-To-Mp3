@@ -32,7 +32,7 @@ def app():
     selection = menu.show_menu()
 
     if selection.name in my_files_extension:
-        temporal_books_library = reader_manager.read_files(selection)
+        temporal_books_library = reader_manager.get_temporal_books(selection)
 
         if not temporal_books_library:
             print("There are not files to read!")
