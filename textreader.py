@@ -32,7 +32,7 @@ class ReadTxt(OpenFile):
     def __init__(self, files_list, mp3_dir):
         self.files = files_list
         self.files_dict = {}
-        self.mp3_files = files_dirs_manager.get_names(mp3_dir)
+        self.mp3_files = files_dirs_manager.get_files_names(mp3_dir)
 
     def read_files(self, folder):
         for file in self.files:
@@ -55,7 +55,7 @@ class ReadEPUB(OpenFile):
     def __init__(self, files_list, mp3_dir):
         self.files = files_list
         self.book = {}
-        self.mp3_files = files_dirs_manager.get_names(mp3_dir)
+        self.mp3_files = files_dirs_manager.get_files_names(mp3_dir)
 
         self.blacklist = ['[document]', 'noscript', 'header', 'html', 'meta', 'head', 'input', 'script']
 
@@ -84,9 +84,10 @@ class ReadEPUB(OpenFile):
         for book_chap in book:
             new_chap = index.find(id=f"{book_chap}")
 
-            new_chap_name = new_chap.get("href").split(".")[0]
-            if "/" in new_chap_name:
-                new_chap_name = new_chap_name.split("/")[1]
+            new_chap_name = new_chap.get("href")
+
+            new_chap_name = files_dirs_manager.get_item_name(new_chap_name)
+
             new_chaps_list.append(new_chap_name)
 
         book = {}
@@ -98,7 +99,6 @@ class ReadEPUB(OpenFile):
         books = []
         for file in self.files:
             book_name = file.split(".")[0]
-
             if book_name in self.mp3_files:
                 print(f"File named = {book_name} already exists in my_mp3_books_library!")
             else:
@@ -108,7 +108,6 @@ class ReadEPUB(OpenFile):
                     book = epub.read_epub(file_dir)
 
                     self.book = self.get_epub_index(file_dir)
-
                     for item in book.get_items():
                         if item.get_type() == ebooklib.ITEM_DOCUMENT:
                             item_name = item.get_name()
@@ -127,7 +126,7 @@ def get_temporal_books(selection):
     directory = selection.value[0]
     base_mp3_dir = selection.value[1]
 
-    files_list = files_dirs_manager.get_names(directory)
+    files_list = files_dirs_manager.get_files_names(directory)
     if ext == "TXT":
         my_text = ReadTxt(files_list, base_mp3_dir)
         return my_text.read_files(directory)
@@ -142,7 +141,6 @@ def start_reading(temporal_books_library, selection):
 
     if type(temporal_books_library) == list:
         print(f"There are {len(temporal_books_library)} books to read!")
-
         for epub_book in temporal_books_library:
             book = epub_book[1]
             book = clean_book_content(book)

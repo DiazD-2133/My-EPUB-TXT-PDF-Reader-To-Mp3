@@ -7,7 +7,7 @@ from voicemanager import VoiceManager, Voice
 from menumanager import MenuManager
 
 
-project_dirs = files_dirs_manager.get_names()
+project_dirs = files_dirs_manager.get_files_names()
 
 needed_folders = ["my_txt_library", "my_mp3_books_library", "single_file_mp3_library", "my_books_library"]
 my_files_extension = ("TXT", "EPUB", "PDF")
