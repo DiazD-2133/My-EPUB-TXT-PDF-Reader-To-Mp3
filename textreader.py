@@ -103,7 +103,7 @@ class ReadEPUB(OpenFile):
                 print(f"File named = {book_name} already exists in my_mp3_books_library!")
             else:
                 file_dir = folder + file
-                file_ext = file.split(".")[1]
+                file_ext = file.split(".")[-1]
                 if file_ext == "epub":
                     book = epub.read_epub(file_dir)
 
