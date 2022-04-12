@@ -3,6 +3,7 @@ import zipfile
 from bs4 import BeautifulSoup
 
 
+# Some times I'm not going to need any *args
 def get_files_names(*args):
     if args:
         dirs_and_files = os.listdir(args[0])
@@ -28,7 +29,7 @@ def create_mp3_directory(base_mp3_dir, folder_name):
 def get_opf(file_dir):
     archive = zipfile.ZipFile(file_dir)
 
-    # there are books that doesn't haven't .opf files in its folder
+    # there are books that don't have .opf files in its folder
     try:
         web_page = archive.read("OEBPS/content.opf")
     except KeyError:

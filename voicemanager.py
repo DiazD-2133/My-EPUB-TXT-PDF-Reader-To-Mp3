@@ -86,7 +86,7 @@ class Voice:
     @staticmethod
     def read(voice, file_extension, folder_dir, files_data):
         count = 0
-        zeros = "000"
+        zeros = ""
 
         for data_name in files_data:
 
@@ -99,21 +99,21 @@ class Voice:
                 voice.engine.setProperty("voice", voice.voice.id)
                 voice.engine.save_to_file(files_data[data_name], f"{folder_dir}{file_name}")
                 voice.engine.runAndWait()
-                print(f"Done! The file was created in {folder_dir}! :)")
+                print(f"Done! The file was saved in {folder_dir}! :)")
 
                 count += 1
             else:
 
-                if count > 100:
+                if count > 99:
+                    zeros = ""
+                elif count > 9:
                     zeros = "0"
                 elif count < 10:
-                    zeros = "000"
-                elif count > 9:
                     zeros = "00"
 
                 voice.engine.setProperty("voice", voice.voice.id)
                 voice.engine.save_to_file(files_data[data_name], f"{folder_dir}{zeros}{count} - {file_name}")
                 voice.engine.runAndWait()
-                print(f"Done! The file was created in {folder_dir}! :)")
+                print(f"Done! The file was saved in {folder_dir}! :)")
 
                 count += 1

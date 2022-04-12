@@ -38,7 +38,7 @@ def app():
             print("There are not files to read!")
             restart_app()
         else:
-            reader_manager.start_reading(temporal_books_library, selection)
+            reader_manager.start_reading(voice, reader, temporal_books_library, selection)
 
     elif selection.name == "LANGUAGE":
         reader.select_language()

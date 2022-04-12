@@ -5,11 +5,7 @@ from bs4 import BeautifulSoup
 import ebooklib
 from ebooklib import epub
 
-from voicemanager import VoiceManager, Voice
 import files_dirs as files_dirs_manager
-
-reader = VoiceManager()
-voice = Voice()
 
 
 def clean_book_content(book):
@@ -76,13 +72,13 @@ class ReadEPUB(OpenFile):
         new_chaps_list = []
         book = {}
 
-        # Get order an id
+        # Get order and id
         for content in contents:
             book[content.get("idref")] = ""
 
         # Get chaps name
         for book_chap in book:
-            new_chap = index.find(id=f"{book_chap}")
+            new_chap = index.find(id=book_chap)
 
             new_chap_name = new_chap.get("href")
 
@@ -100,7 +96,7 @@ class ReadEPUB(OpenFile):
         for file in self.files:
             book_name = file.split(".")[0]
             if book_name in self.mp3_files:
-                print(f"File named = {book_name} already exists in my_mp3_books_library!")
+                print(f"Book named = {book_name} already exists in my_mp3_books_library!")
             else:
                 file_dir = folder + file
                 file_ext = file.split(".")[-1]
@@ -135,7 +131,7 @@ def get_temporal_books(selection):
         return my_text.read_files(directory)
 
 
-def start_reading(temporal_books_library, selection):
+def start_reading(voice, reader, temporal_books_library, selection):
     file_extension = selection.name
     base_mp3_dir = selection.value[1]
 
