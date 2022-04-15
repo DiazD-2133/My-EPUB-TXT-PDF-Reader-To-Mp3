@@ -1,5 +1,3 @@
-from abc import ABC, abstractmethod
-
 from bs4 import BeautifulSoup
 
 import ebooklib
@@ -18,13 +16,7 @@ def clean_book_content(book):
     return book
 
 
-class OpenFile(ABC):
-    @abstractmethod
-    def read_files(self, folder):
-        pass
-
-
-class ReadTxt(OpenFile):
+class ReadTxt:
     def __init__(self, files_list, mp3_dir):
         self.files = files_list
         self.files_dict = {}
@@ -47,7 +39,7 @@ class ReadTxt(OpenFile):
         return self.files_dict
 
 
-class ReadEPUB(OpenFile):
+class ReadEPUB:
     def __init__(self, files_list, mp3_dir):
         self.files = files_list
         self.book = {}
