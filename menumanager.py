@@ -4,6 +4,7 @@ from enum import Enum, auto
 class AppTasks(Enum):
     TXT = ("my_txt_library/", "single_file_mp3_library/")
     EPUB = ("my_books_library/", "my_mp3_books_library/")
+    PDF = ("my_books_library/", "my_mp3_books_library/", "PDF")
     LANGUAGE = auto()
     SPEEDRATE = auto()
     RESET = auto()
@@ -13,6 +14,7 @@ class AppTasks(Enum):
 class MenuManager:
     def __init__(self):
         self.todolist = [("Read txt file", AppTasks.TXT), ("Read EPUB file", AppTasks.EPUB),
+                         ("Read PDF file", AppTasks.PDF),
                          ("Choose language", AppTasks.LANGUAGE), ("Choose speed rate", AppTasks.SPEEDRATE),
                          ("Reset", AppTasks.RESET), ("Close\n", AppTasks.CLOSE)]
 

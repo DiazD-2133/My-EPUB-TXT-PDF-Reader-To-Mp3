@@ -1,4 +1,12 @@
+from io import StringIO
 from bs4 import BeautifulSoup
+
+from pdfminer.converter import TextConverter
+from pdfminer.layout import LAParams
+from pdfminer.pdfdocument import PDFDocument
+from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
+from pdfminer.pdfpage import PDFPage
+from pdfminer.pdfparser import PDFParser
 
 import ebooklib
 from ebooklib import epub
@@ -47,7 +55,7 @@ class ReadEPUB:
 
         self.blacklist = ['[document]', 'noscript', 'header', 'html', 'meta', 'head', 'input', 'script']
 
-    def clean(self, chap):
+    def clean_text(self, chap):
         output = ''
         soup = BeautifulSoup(chap, 'html.parser')
         text = soup.find_all(text=True)
@@ -100,7 +108,62 @@ class ReadEPUB:
                         if item.get_type() == ebooklib.ITEM_DOCUMENT:
                             item_name = item.get_name()
                             item_name = files_dirs_manager.get_item_name(item_name)
-                            self.book[item_name] = self.clean(item.get_content())
+                            self.book[item_name] = self.clean_text(item.get_content())
+
+                temporal_book = (book_name, self.book)
+                books.append(temporal_book)
+
+        return books
+
+
+class ReadPDF:
+    def __init__(self, files_list, mp3_dir):
+        self.files = files_list
+        self.book = {}
+        self.mp3_files = files_dirs_manager.get_files_names(mp3_dir)
+
+        self.rsrcmgr = PDFResourceManager()
+        self.output_string = StringIO()
+        self.device = TextConverter(self.rsrcmgr, self.output_string, laparams=LAParams())
+        self.interpreter = PDFPageInterpreter(self.rsrcmgr, self.device)
+
+    def clean_text(self):
+        my_txt_book = self.output_string.getvalue()
+        my_txt_book = my_txt_book.replace("\x0c", "")
+        my_txt_book = my_txt_book.replace("\n", " ")
+        my_txt_book = my_txt_book.replace("  ", " ")
+        return my_txt_book
+
+    def read_files(self, folder):
+        books = []
+        number_of_pages = 0
+        index = 0
+        for file in self.files:
+            book_name = file.split(".")[0]
+            file_ext = file.split(".")[-1]
+            if book_name in self.mp3_files and file_ext == "pdf":
+                print(f"Book named = {book_name} already exists in my_mp3_books_library!")
+            else:
+                file_dir = folder + file
+                if file_ext == "pdf":
+                    with open(file_dir, 'rb') as in_file:
+                        parser = PDFParser(in_file)
+                        doc = PDFDocument(parser)
+
+                        for page in PDFPage.create_pages(doc):
+                            number_of_pages += 1
+                            self.interpreter.process_page(page)
+                            # PDF doesn't have an index so I add this to divide by sets of 8 pages
+                            if number_of_pages > 8:
+                                number_of_pages = 0
+                                index += 1
+                                my_txt_book = self.clean_text()
+                                self.book[str(index)] = my_txt_book
+
+                                self.output_string = StringIO()
+                                self.rsrcmgr = PDFResourceManager()
+                                self.device = TextConverter(self.rsrcmgr, self.output_string, laparams=LAParams())
+                                self.interpreter = PDFPageInterpreter(self.rsrcmgr, self.device)
 
                 temporal_book = (book_name, self.book)
                 books.append(temporal_book)
@@ -110,7 +173,6 @@ class ReadEPUB:
 
 def get_temporal_books(selection):
     ext = selection.name
-
     directory = selection.value[0]
     base_mp3_dir = selection.value[1]
 
@@ -120,6 +182,9 @@ def get_temporal_books(selection):
         return my_text.read_files(directory)
     elif ext == "EPUB":
         my_text = ReadEPUB(files_list, base_mp3_dir)
+        return my_text.read_files(directory)
+    elif ext == "PDF":
+        my_text = ReadPDF(files_list, base_mp3_dir)
         return my_text.read_files(directory)
 
 
