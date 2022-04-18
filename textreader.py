@@ -122,8 +122,9 @@ class ReadPDF:
         self.book = {}
         self.mp3_files = files_dirs_manager.get_files_names(mp3_dir)
 
-        self.rsrcmgr = PDFResourceManager()
         self.output_string = StringIO()
+
+        self.rsrcmgr = PDFResourceManager()
         self.device = TextConverter(self.rsrcmgr, self.output_string, laparams=LAParams())
         self.interpreter = PDFPageInterpreter(self.rsrcmgr, self.device)
 
@@ -133,6 +134,13 @@ class ReadPDF:
         my_txt_book = my_txt_book.replace("\n", " ")
         my_txt_book = my_txt_book.replace("  ", " ")
         return my_txt_book
+
+    def re_start_parameters(self):
+        self.output_string = StringIO()
+
+        self.rsrcmgr = PDFResourceManager()
+        self.device = TextConverter(self.rsrcmgr, self.output_string, laparams=LAParams())
+        self.interpreter = PDFPageInterpreter(self.rsrcmgr, self.device)
 
     def read_files(self, folder):
         books = []
@@ -160,10 +168,7 @@ class ReadPDF:
                                 my_txt_book = self.clean_text()
                                 self.book[str(index)] = my_txt_book
 
-                                self.output_string = StringIO()
-                                self.rsrcmgr = PDFResourceManager()
-                                self.device = TextConverter(self.rsrcmgr, self.output_string, laparams=LAParams())
-                                self.interpreter = PDFPageInterpreter(self.rsrcmgr, self.device)
+                                self.re_start_parameters()
 
                 temporal_book = (book_name, self.book)
                 books.append(temporal_book)
