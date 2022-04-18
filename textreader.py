@@ -30,7 +30,7 @@ class ReadTxt:
         self.files_dict = {}
         self.mp3_files = files_dirs_manager.get_files_names(mp3_dir)
 
-    def read_files(self, folder):
+    def create_temporal_book(self, folder):
         for file in self.files:
             mp3_file_name = file.replace(".txt", ".mp3")
             if mp3_file_name in self.mp3_files:
@@ -91,7 +91,7 @@ class ReadEPUB:
             book[chap] = ""
         return book
 
-    def read_files(self, folder):
+    def create_temporal_book(self, folder):
         books = []
         for file in self.files:
             book_name = file.split(".")[0]
@@ -133,6 +133,9 @@ class ReadPDF:
         my_txt_book = my_txt_book.replace("\x0c", "")
         my_txt_book = my_txt_book.replace("\n", " ")
         my_txt_book = my_txt_book.replace("  ", " ")
+        # Can add text that you want to delete
+        # my_txt_book = my_txt_book.replace("www.useless_text.com", "")
+
         return my_txt_book
 
     def re_start_parameters(self):
@@ -142,7 +145,7 @@ class ReadPDF:
         self.device = TextConverter(self.rsrcmgr, self.output_string, laparams=LAParams())
         self.interpreter = PDFPageInterpreter(self.rsrcmgr, self.device)
 
-    def read_files(self, folder):
+    def create_temporal_book(self, folder):
         books = []
         number_of_pages = 0
         index = 0
@@ -162,6 +165,7 @@ class ReadPDF:
                             number_of_pages += 1
                             self.interpreter.process_page(page)
                             # PDF doesn't have an index so I add this to divide by sets of 8 pages
+                            # I don't want all together!
                             if number_of_pages > 8:
                                 number_of_pages = 0
                                 index += 1
@@ -169,6 +173,10 @@ class ReadPDF:
                                 self.book[str(index)] = my_txt_book
 
                                 self.re_start_parameters()
+                        if number_of_pages != 0:
+                            index += 1
+                            my_txt_book = self.clean_text()
+                            self.book[str(index)] = my_txt_book
 
                 temporal_book = (book_name, self.book)
                 books.append(temporal_book)
@@ -184,13 +192,13 @@ def get_temporal_books(selection):
     files_list = files_dirs_manager.get_files_names(directory)
     if ext == "TXT":
         my_text = ReadTxt(files_list, base_mp3_dir)
-        return my_text.read_files(directory)
+        return my_text.create_temporal_book(directory)
     elif ext == "EPUB":
         my_text = ReadEPUB(files_list, base_mp3_dir)
-        return my_text.read_files(directory)
+        return my_text.create_temporal_book(directory)
     elif ext == "PDF":
         my_text = ReadPDF(files_list, base_mp3_dir)
-        return my_text.read_files(directory)
+        return my_text.create_temporal_book(directory)
 
 
 def start_reading(voice, reader, temporal_books_library, selection):
