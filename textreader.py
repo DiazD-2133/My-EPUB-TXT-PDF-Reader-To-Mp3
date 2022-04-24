@@ -204,7 +204,6 @@ def start_reading(voice, reader, temporal_books_library, selection):
 
     if type(temporal_books_library) == list:
         print(temporal_books_library)
-        print(f"There are {len(temporal_books_library)} books to read!")
         for epub_book in temporal_books_library:
             book = epub_book[1]
             book = clean_book_content(book)
