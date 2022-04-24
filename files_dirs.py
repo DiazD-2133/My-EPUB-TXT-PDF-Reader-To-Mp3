@@ -38,3 +38,10 @@ def get_opf(file_dir):
     soup = BeautifulSoup(web_page, "html.parser")
 
     return soup
+
+
+def already_exists(book_name, mp3_library):
+    if book_name in mp3_library:
+        print(f"Book named = {book_name} already exists in my_mp3_books_library!")
+    else:
+        return False

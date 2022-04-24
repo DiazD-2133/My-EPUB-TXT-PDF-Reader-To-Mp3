@@ -95,9 +95,7 @@ class ReadEPUB:
         books = []
         for file in self.files:
             book_name = file.split(".")[0]
-            if book_name in self.mp3_files:
-                print(f"Book named = {book_name} already exists in my_mp3_books_library!")
-            else:
+            if not files_dirs_manager.already_exists(book_name, self.mp3_files):
                 file_dir = folder + file
                 file_ext = file.split(".")[-1]
                 if file_ext == "epub":
@@ -110,8 +108,8 @@ class ReadEPUB:
                             item_name = files_dirs_manager.get_item_name(item_name)
                             self.book[item_name] = self.clean_text(item.get_content())
 
-                temporal_book = (book_name, self.book)
-                books.append(temporal_book)
+                    temporal_book = (book_name, self.book)
+                    books.append(temporal_book)
 
         return books
 
@@ -151,11 +149,10 @@ class ReadPDF:
         index = 0
         for file in self.files:
             book_name = file.split(".")[0]
-            file_ext = file.split(".")[-1]
-            if book_name in self.mp3_files and file_ext == "pdf":
-                print(f"Book named = {book_name} already exists in my_mp3_books_library!")
-            else:
+
+            if not files_dirs_manager.already_exists(book_name, self.mp3_files):
                 file_dir = folder + file
+                file_ext = file.split(".")[-1]
                 if file_ext == "pdf":
                     with open(file_dir, 'rb') as in_file:
                         parser = PDFParser(in_file)
@@ -178,8 +175,8 @@ class ReadPDF:
                             my_txt_book = self.clean_text()
                             self.book[str(index)] = my_txt_book
 
-                temporal_book = (book_name, self.book)
-                books.append(temporal_book)
+                    temporal_book = (book_name, self.book)
+                    books.append(temporal_book)
 
         return books
 
@@ -206,6 +203,7 @@ def start_reading(voice, reader, temporal_books_library, selection):
     base_mp3_dir = selection.value[1]
 
     if type(temporal_books_library) == list:
+        print(temporal_books_library)
         print(f"There are {len(temporal_books_library)} books to read!")
         for epub_book in temporal_books_library:
             book = epub_book[1]
