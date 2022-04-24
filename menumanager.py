@@ -7,7 +7,6 @@ class AppTasks(Enum):
     PDF = ("my_books_library/", "my_mp3_books_library/", "PDF")
     LANGUAGE = auto()
     SPEEDRATE = auto()
-    RESET = auto()
     CLOSE = auto()
 
 
@@ -16,7 +15,7 @@ class MenuManager:
         self.todolist = [("Read txt file", AppTasks.TXT), ("Read EPUB file", AppTasks.EPUB),
                          ("Read PDF file", AppTasks.PDF),
                          ("Choose language", AppTasks.LANGUAGE), ("Choose speed rate", AppTasks.SPEEDRATE),
-                         ("Reset", AppTasks.RESET), ("Close\n", AppTasks.CLOSE)]
+                         ("Close\n", AppTasks.CLOSE)]
 
         self.keys_list = [_ for _ in range(len(self.todolist))]
         self.menu = {str(value + 1): self.todolist[value] for value in self.keys_list}

@@ -22,12 +22,6 @@ voice = Voice()
 menu = MenuManager()
 
 
-def restart_app():
-    print("Restarting...")
-    os.system("python main.py")
-    exit()
-
-
 def app():
     selection = menu.show_menu()
 
@@ -36,7 +30,7 @@ def app():
 
         if not temporal_books_library:
             print("There are not files to read!")
-            restart_app()
+            app()
         else:
             reader_manager.start_reading(voice, reader, temporal_books_library, selection)
 
@@ -44,8 +38,7 @@ def app():
         reader.select_language()
     elif selection.name == "SPEEDRATE":
         reader.change_speedRate()
-    elif selection.name == "RESET":
-        restart_app()
+
     elif selection.name == "CLOSE":
         return
     app()
