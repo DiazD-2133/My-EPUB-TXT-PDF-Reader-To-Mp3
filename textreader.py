@@ -203,7 +203,6 @@ def start_reading(voice, reader, temporal_books_library, selection):
     base_mp3_dir = selection.value[1]
 
     if type(temporal_books_library) == list:
-        print(temporal_books_library)
         for epub_book in temporal_books_library:
             book = epub_book[1]
             book = clean_book_content(book)
