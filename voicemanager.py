@@ -12,7 +12,12 @@ def save_changes(my_language, speed_rate):
 
 class VoiceManager:
     def __init__(self):
-        self.my_language = int(my_voice_data[0])
+        try:
+            self.my_language = int(my_voice_data[0])
+        except IndexError:
+            print('Selecting default language')
+            self.my_language = 0
+
         self.speed_rate = int(my_voice_data[1])
 
         self.engine = pyttsx3.init()
