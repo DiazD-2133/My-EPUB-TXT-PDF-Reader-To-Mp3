@@ -1,5 +1,7 @@
 Get-ExecutionPolicy  # Allows use the app from cmd #
 
+py -m venv venv # Install Python venv
+
 venv\Scripts\activate # activate venv on cmd(windows) #
 
 pip install -r requirements.txt # install requirements #
