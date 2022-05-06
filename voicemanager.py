@@ -13,6 +13,7 @@ def save_changes(my_language, speed_rate):
 class VoiceManager:
     def __init__(self):
         self.my_language = int(my_voice_data[0])
+
         self.speed_rate = int(my_voice_data[1])
 
         self.engine = pyttsx3.init()
@@ -20,7 +21,12 @@ class VoiceManager:
         self.engine.setProperty("rate", self.speed_rate)
         # Language
         self.voices = self.engine.getProperty("voices")
-        self.voice = self.voices[self.my_language]
+
+        try:
+            self.voice = self.voices[self.my_language]
+        except IndexError:
+            print('Selecting default language')
+            self.select_language()
 
     def choose_speedRate(self):
         try:
@@ -50,16 +56,24 @@ class VoiceManager:
     def select_language(self):
         i = 1
         options = []
-        actual_language = self.voice.name.split('-')[1].split()[0]
+        try:
+            actual_language = self.voice.name.split('-')[1].split()[0]
+        except AttributeError:
+            actual_language = "out of range, please select a new one"
 
         print(f"\nActual language: {actual_language}\n")
-        change_language = input("Do you want to change language\n"
-                                "Select y/n: ").lower()
-        answers = ("y", "n")
-        while not change_language in answers:
-            print("\nWrong answer!\n")
+
+        if type(actual_language) != str:
             change_language = input("Do you want to change language\n"
                                     "Select y/n: ").lower()
+            answers = ("y", "n")
+            while not change_language in answers:
+                print("\nWrong answer!\n")
+                change_language = input("Do you want to change language\n"
+                                        "Select y/n: ").lower()
+        else:
+            change_language = "y"
+
         if change_language == "y":
             for voice in self.voices:
                 language = voice.name.split('-')[1].split()[0]
@@ -72,6 +86,7 @@ class VoiceManager:
             while not self.my_language in options:
                 print("You must choose one of the enumerated options")
                 self.my_language = input("\nChoose voice by its number: ")
+
             self.my_language = int(self.my_language) - 1
             self.voice = self.voices[self.my_language]
             self.my_language = str(self.my_language)
