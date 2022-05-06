@@ -25,7 +25,6 @@ class VoiceManager:
         try:
             self.voice = self.voices[self.my_language]
         except IndexError:
-            print('Selecting default language')
             self.select_language()
 
     def choose_speedRate(self):
