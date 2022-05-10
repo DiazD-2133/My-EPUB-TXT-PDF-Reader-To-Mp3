@@ -3,7 +3,7 @@ import zipfile
 from bs4 import BeautifulSoup
 
 
-# Some times I'm not going to need any *args
+# Sometimes I'm not going to need any *args
 def get_files_names(*args):
     if args:
         dirs_and_files = os.listdir(args[0])

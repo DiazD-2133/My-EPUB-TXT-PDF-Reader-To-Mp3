@@ -12,8 +12,8 @@ class AppTasks(Enum):
 
 class MenuManager:
     def __init__(self):
-        self.todolist = [("Read txt file", AppTasks.TXT), ("Read EPUB file", AppTasks.EPUB),
-                         ("Read PDF file", AppTasks.PDF),
+        self.todolist = [("Read TXT", AppTasks.TXT), ("Read EPUB", AppTasks.EPUB),
+                         ("Read PDF", AppTasks.PDF),
                          ("Choose language", AppTasks.LANGUAGE), ("Choose speed rate", AppTasks.SPEEDRATE),
                          ("Close\n", AppTasks.CLOSE)]
 
