@@ -6,3 +6,14 @@ stop the application and they will appear
 Put your PDF, EPUB files in <strong>my_books_library</strong><br>
 Put your TXT files in <strong>my_txt_library</strong>
 
+How to use
+
+In cmd ('Command Prompt') go to the app´s directory
+
+py -m venv venv # Create Python venv
+
+venv\Scripts\activate # activate venv on cmd(windows) #
+
+pip install -r requirements.txt # install requirements #
+
+python main.py # Run
