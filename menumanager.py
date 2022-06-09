@@ -12,13 +12,13 @@ class AppTasks(Enum):
 
 class MenuManager:
     def __init__(self):
-        self.todolist = [("Read TXT", AppTasks.TXT), ("Read EPUB", AppTasks.EPUB),
+        todolist = [("Read TXT", AppTasks.TXT), ("Read EPUB", AppTasks.EPUB),
                          ("Read PDF", AppTasks.PDF),
                          ("Choose language", AppTasks.LANGUAGE), ("Choose speed rate", AppTasks.SPEEDRATE),
                          ("Close\n", AppTasks.CLOSE)]
 
-        self.keys_list = [_ for _ in range(len(self.todolist))]
-        self.menu = {str(value + 1): self.todolist[value] for value in self.keys_list}
+        keys_list = [_ for _ in range(len(todolist))]
+        self.menu = {str(value + 1): todolist[value] for value in keys_list}
 
     def show_menu(self) -> Enum:
         print("\nWelcome to Text-Reader By - Souji21\n")
