@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="64f53a6a-04f0-4ac7-9069-7a32937bd9f2" name="Default Changelist" comment="Merge remote-tracking branch 'github/master'">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    <list default="true" id="64f53a6a-04f0-4ac7-9069-7a32937bd9f2" name="Default Changelist" comment="refactor menu manager">
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_4_6_2022_9_06_p__m___Default_Changelist_.xml" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -180,27 +180,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1646859963647</updated>
-    </task>
-    <task id="LOCAL-00007" summary="re-format mp3´s  filename">
-      <created>1647390662853</created>
-      <option name="number" value="00007" />
-      <option name="presentableId" value="LOCAL-00007" />
-      <option name="project" value="LOCAL" />
-      <updated>1647390662853</updated>
-    </task>
-    <task id="LOCAL-00008" summary="fix issue with chapter structure in some books">
-      <created>1647393243002</created>
-      <option name="number" value="00008" />
-      <option name="presentableId" value="LOCAL-00008" />
-      <option name="project" value="LOCAL" />
-      <updated>1647393243002</updated>
-    </task>
-    <task id="LOCAL-00009" summary="add comment and fix the minimum len for a chapter">
-      <created>1647396373320</created>
-      <option name="number" value="00009" />
-      <option name="presentableId" value="LOCAL-00009" />
-      <option name="project" value="LOCAL" />
-      <updated>1647396373320</updated>
     </task>
     <task id="LOCAL-00010" summary="add &quot;Already exist&quot; function">
       <created>1647649474937</created>
@@ -524,7 +503,28 @@
       <option name="project" value="LOCAL" />
       <updated>1654391483266</updated>
     </task>
-    <option name="localTasksCounter" value="56" />
+    <task id="LOCAL-00056" summary="Merge remote-tracking branch 'github/master'">
+      <created>1654738014611</created>
+      <option name="number" value="00056" />
+      <option name="presentableId" value="LOCAL-00056" />
+      <option name="project" value="LOCAL" />
+      <updated>1654738014611</updated>
+    </task>
+    <task id="LOCAL-00057" summary="refactor menu manager">
+      <created>1654738420609</created>
+      <option name="number" value="00057" />
+      <option name="presentableId" value="LOCAL-00057" />
+      <option name="project" value="LOCAL" />
+      <updated>1654738420609</updated>
+    </task>
+    <task id="LOCAL-00058" summary="refactor menu manager">
+      <created>1655174832428</created>
+      <option name="number" value="00058" />
+      <option name="presentableId" value="LOCAL-00058" />
+      <option name="project" value="LOCAL" />
+      <updated>1655174832429</updated>
+    </task>
+    <option name="localTasksCounter" value="59" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
@@ -596,7 +596,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="It shows better information while read items" />
     <MESSAGE value="fix issues with multiple books" />
     <MESSAGE value="refactoring voicemanager.py" />
     <MESSAGE value="Refactor menu and reader_manager" />
@@ -621,6 +620,7 @@
     <MESSAGE value="remove a test print" />
     <MESSAGE value="delete the 'file' word" />
     <MESSAGE value="Merge remote-tracking branch 'github/master'" />
-    <option name="LAST_COMMIT_MESSAGE" value="Merge remote-tracking branch 'github/master'" />
+    <MESSAGE value="refactor menu manager" />
+    <option name="LAST_COMMIT_MESSAGE" value="refactor menu manager" />
   </component>
 </project>
