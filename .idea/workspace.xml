@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="64f53a6a-04f0-4ac7-9069-7a32937bd9f2" name="Default Changelist" comment="refactor menu manager">
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_4_6_2022_9_06_p__m___Default_Changelist_.xml" beforeDir="false" />
-    </list>
+    <list default="true" id="64f53a6a-04f0-4ac7-9069-7a32937bd9f2" name="Default Changelist" comment="refactor menu manager" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -180,13 +178,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1646859963647</updated>
-    </task>
-    <task id="LOCAL-00010" summary="add &quot;Already exist&quot; function">
-      <created>1647649474937</created>
-      <option name="number" value="00010" />
-      <option name="presentableId" value="LOCAL-00010" />
-      <option name="project" value="LOCAL" />
-      <updated>1647649474937</updated>
     </task>
     <task id="LOCAL-00011" summary="add &quot;Already exist&quot; function">
       <created>1647649518862</created>
@@ -524,7 +515,14 @@
       <option name="project" value="LOCAL" />
       <updated>1655174832429</updated>
     </task>
-    <option name="localTasksCounter" value="59" />
+    <task id="LOCAL-00059" summary="refactor menu manager">
+      <created>1655352970945</created>
+      <option name="number" value="00059" />
+      <option name="presentableId" value="LOCAL-00059" />
+      <option name="project" value="LOCAL" />
+      <updated>1655352970945</updated>
+    </task>
+    <option name="localTasksCounter" value="60" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">

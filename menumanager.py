@@ -20,7 +20,7 @@ class MenuManager:
         self.menu = {str(value + 1): todolist[value] for value in keys_list}
 
     def show_menu(self) -> Enum:
-        print("\nWelcome to Text-Reader By - Souji21\n")
+        print("\nWelcome to Text-Reader By - Deiker Diaz\n")
         for index in self.menu:
             print(f"{index}. {self.menu[index][0]}")
 
