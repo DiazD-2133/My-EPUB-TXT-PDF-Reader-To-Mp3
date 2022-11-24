@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="64f53a6a-04f0-4ac7-9069-7a32937bd9f2" name="Default Changelist" comment="refactor menu manager" />
+    <list default="true" id="64f53a6a-04f0-4ac7-9069-7a32937bd9f2" name="Default Changelist" comment="refactor menu manager">
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_16_6_2022_12_16_a__m__[Default_Changelist]/shelved.patch" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -40,9 +44,13 @@
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/Souji/Documents/00Practicas/Python/00 Lector de texto&quot;
+  }
 }</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\Souji\Documents\00Practicas\Python\My-EPUB-TXT-PDF-Reader-To-Mp3\my_books_library" />
       <recent name="C:\Users\Souji\Documents\00Practicas\Python\SOLID-Lector\my_books_library" />
       <recent name="C:\Users\Souji\Documents\00Practicas\Python\SOLID-Lector" />
     </key>
@@ -178,20 +186,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1646859963647</updated>
-    </task>
-    <task id="LOCAL-00011" summary="add &quot;Already exist&quot; function">
-      <created>1647649518862</created>
-      <option name="number" value="00011" />
-      <option name="presentableId" value="LOCAL-00011" />
-      <option name="project" value="LOCAL" />
-      <updated>1647649518862</updated>
-    </task>
-    <task id="LOCAL-00012" summary="add &quot;Already exist&quot; function">
-      <created>1647726471594</created>
-      <option name="number" value="00012" />
-      <option name="presentableId" value="LOCAL-00012" />
-      <option name="project" value="LOCAL" />
-      <updated>1647726471594</updated>
     </task>
     <task id="LOCAL-00013" summary="add voice.txt to .gitignore">
       <created>1647726636982</created>
@@ -522,7 +516,21 @@
       <option name="project" value="LOCAL" />
       <updated>1655352970945</updated>
     </task>
-    <option name="localTasksCounter" value="60" />
+    <task id="LOCAL-00060" summary="refactor menu manager">
+      <created>1655353338168</created>
+      <option name="number" value="00060" />
+      <option name="presentableId" value="LOCAL-00060" />
+      <option name="project" value="LOCAL" />
+      <updated>1655353338169</updated>
+    </task>
+    <task id="LOCAL-00061" summary="refactor menu manager">
+      <created>1655353396571</created>
+      <option name="number" value="00061" />
+      <option name="presentableId" value="LOCAL-00061" />
+      <option name="project" value="LOCAL" />
+      <updated>1655353396571</updated>
+    </task>
+    <option name="localTasksCounter" value="62" />
     <servers />
   </component>
   <component name="Vcs.Log.History.Properties">
