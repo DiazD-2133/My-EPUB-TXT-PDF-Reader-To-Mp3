@@ -30,7 +30,7 @@ def app():
 
         if not temporal_books_library:
             print("There are not files to read!")
-            app()
+            return True
         else:
             reader_manager.start_reading(voice, reader, temporal_books_library, selection)
 
@@ -40,7 +40,9 @@ def app():
         reader.change_speedRate()
 
     elif selection.name == "CLOSE":
-        return
-    app()
+        return False
 
-app()
+run = True
+
+while run:
+    run = app()
