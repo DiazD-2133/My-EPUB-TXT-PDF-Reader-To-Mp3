@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="64f53a6a-04f0-4ac7-9069-7a32937bd9f2" name="Default Changelist" comment="refactor menu manager">
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_16_6_2022_12_16_a__m__[Default_Changelist]/shelved.patch" beforeDir="false" />
+    <list default="true" id="64f53a6a-04f0-4ac7-9069-7a32937bd9f2" name="Default Changelist" comment="change function recursivity adding while">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textreader.py" beforeDir="false" afterPath="$PROJECT_DIR$/textreader.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/voice.txt" beforeDir="false" afterPath="$PROJECT_DIR$/voice.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -45,21 +46,22 @@
   </component>
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/Souji/Documents/00Practicas/Python/00 Lector de texto&quot;
+    &quot;last_opened_file_path&quot;: &quot;D:/Mis proyectos/TelegramBot&quot;
   }
 }</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="C:\Users\Souji\Documents\00Practicas\Python\My-EPUB-TXT-PDF-Reader-To-Mp3\my_books_library" />
+      <recent name="C:\Users\Souji\Documents\00Practicas\Python\My-EPUB-TXT-PDF-Reader-To-Mp3\my_txt_library" />
       <recent name="C:\Users\Souji\Documents\00Practicas\Python\SOLID-Lector\my_books_library" />
       <recent name="C:\Users\Souji\Documents\00Practicas\Python\SOLID-Lector" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\Souji\Documents\00Practicas\Python\My-EPUB-TXT-PDF-Reader-To-Mp3\my_txt_library" />
       <recent name="C:\Users\Souji\Documents\00Practicas\Python\My-EPUB-TXT-PDF-Reader-To-Mp3\my_books_library" />
       <recent name="C:\Users\Souji\Documents\00Practicas\Python\SOLID-Lector\my_books_library" />
       <recent name="C:\Users\Souji\Documents\00Practicas\Python\SOLID-Lector\my_mp3_books_library" />
       <recent name="C:\Users\Souji\Documents\00Practicas\Python\SOLID-Lector\my_txt_library" />
-      <recent name="C:\Users\Souji\Documents\00Practicas\Python\SOLID-Lector" />
     </key>
   </component>
   <component name="RunManager" selected="Python.main">

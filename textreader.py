@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from io import StringIO
 from bs4 import BeautifulSoup
 
@@ -24,12 +25,18 @@ def clean_book_content(book):
     return book
 
 
-class ReadTxt:
+class Read(ABC):
     def __init__(self, files_list, mp3_dir):
         self.files = files_list
-        self.files_dict = {}
+        self.book = {}
         self.mp3_files = files_dirs_manager.get_files_names(mp3_dir)
 
+    @abstractmethod
+    def create_temporal_book(self, folder):
+        pass
+
+
+class ReadTxt(Read):
     def create_temporal_book(self, folder):
         for file in self.files:
             mp3_file_name = file.replace(".txt", ".mp3")
@@ -42,16 +49,14 @@ class ReadTxt:
                     text = data.read()
 
                     file_name = file.split(".")[0]
-                    self.files_dict[file_name] = text
+                    self.book[file_name] = text
 
-        return self.files_dict
+        return self.book
 
 
-class ReadEPUB:
-    def __init__(self, files_list, mp3_dir):
-        self.files = files_list
-        self.book = {}
-        self.mp3_files = files_dirs_manager.get_files_names(mp3_dir)
+class ReadEPUB(Read):
+    def __init__(self, files_list=None, mp3_dir=None):
+        super().__init__(files_list, mp3_dir)
 
         self.blacklist = ['[document]', 'noscript', 'header', 'html', 'meta', 'head', 'input', 'script']
 
@@ -114,11 +119,9 @@ class ReadEPUB:
         return books
 
 
-class ReadPDF:
-    def __init__(self, files_list, mp3_dir):
-        self.files = files_list
-        self.book = {}
-        self.mp3_files = files_dirs_manager.get_files_names(mp3_dir)
+class ReadPDF(Read):
+    def __init__(self, files_list=None, mp3_dir=None):
+        super().__init__(files_list, mp3_dir)
 
         self.output_string = StringIO()
 
