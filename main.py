@@ -4,8 +4,8 @@ from typing import List, Union, Dict, Tuple, Optional
 import files_dirs as files_dirs_manager 
 from voicemanager import VoiceManager
 from menumanager import MenuManager, MenuOption
-# Import necessary components from the refactored textreader
-from textreader import TextFileReader, EpubFileReader, PdfFileReader, AbstractReader, clean_book_chapters
+# Updated import for textreader to use the process_file_for_ui entry point
+from textreader import process_file_for_ui
 
 
 # --- Constants ---
