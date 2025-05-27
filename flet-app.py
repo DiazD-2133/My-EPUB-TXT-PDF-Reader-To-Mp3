@@ -168,7 +168,7 @@ def main(page: ft.Page):
     # info_items dictionary is also defined.
 
     page.overlay.extend([get_directory_dialog, pick_files_dialog, selected_file_name])
-    }
+    
 
     page.overlay.extend([get_directory_dialog, pick_files_dialog, selected_file_name])
     page.window_width = 480
