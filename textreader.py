@@ -1,9 +1,5 @@
-import os
-from abc import ABC, abstractmethod
 from io import StringIO
-from typing import List, Dict, Union, Tuple, Optional
-
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup
 
 from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
@@ -14,419 +10,328 @@ from pdfminer.pdfparser import PDFParser
 
 import ebooklib
 from ebooklib import epub
-from ebooklib.epub import EpubBook, EpubHtml
 
-import files_dirs as file_system_manager # Renamed for clarity
-from menumanager import MenuOption
-from voicemanager import VoiceManager # Voice class removed
+import files_dirs as files_dirs_manager
+import os
 
 
-# --- Utility Functions ---
-def clean_book_chapters(
-    book_chapters: Dict[str, str]
-) -> Dict[str, str]:
-    """Removes chapters with content length less than a defined threshold."""
-    MIN_CONTENT_LENGTH = 30
-    chapters_to_remove: List[str] = [
-        chapter_name
-        for chapter_name, content in book_chapters.items()
-        if len(content) < MIN_CONTENT_LENGTH
-    ]
-    for chapter_name in chapters_to_remove:
-        book_chapters.pop(chapter_name)
-    return book_chapters
+def clean_book_content(book):
+    empty_chapters = []
+    for chapter_title, chapter_content in book.items():
+        if len(chapter_content) < 30:
+            empty_chapters.append(chapter_title)
+    for chapter_title in empty_chapters:
+        book.pop(chapter_title)
+    return book
 
 
-# --- Base Reader Class ---
-class AbstractReader(ABC): # Renamed from Read to AbstractReader
-    """Abstract base class for reading different file formats."""
-
-    def __init__(self, files_to_process: List[str], target_mp3_dir: str) -> None:
-        self.files_to_process: List[str] = files_to_process
-        # Stores content for a single book, chapter_name -> chapter_content
-        self.current_book_content: Dict[str, str] = {}
-        self.existing_mp3_files: List[str] = file_system_manager.get_files_names(
-            target_mp3_dir
-        )
-
-    def _should_process_file(self, file_name_without_ext: str) -> bool:
-        """Checks if a file should be processed (e.g., if it already exists as MP3)."""
-        if file_system_manager.already_exists(
-            file_name_without_ext, self.existing_mp3_files
-        ):
-            return False
-        return True
-
-    @abstractmethod
-    def extract_book_content(
-        self, input_folder: str
-    ) -> Union[Dict[str, str], List[Tuple[str, Dict[str, str]]]]:
-        """
-        Extracts content from files.
-        For single-file books (like TXT), returns Dict[original_filename, content].
-        For multi-chapter books (like EPUB, PDF), returns List[Tuple[book_name, Dict[chapter_name, chapter_content]]].
-        """
-        pass
-
-
-# --- Concrete Reader Implementations ---
-class TextFileReader(AbstractReader):
-    """Reads plain TXT files."""
-
-    def extract_book_content(self, input_folder: str) -> Dict[str, str]:
-        """Extracts content from TXT files."""
-        processed_books: Dict[str, str] = {}
-        for BCM_file_name in self.files_to_process: # BCM: Before Content Manipulation
-            original_file_name_no_ext: str = BCM_file_name.split(".")[0]
-            mp3_file_name: str = BCM_file_name.replace(".txt", ".mp3")
-
-            if mp3_file_name in self.existing_mp3_files: # More direct check
-                print(
-                    "File named = {} already exists in the MP3 library!".format(
-                        original_file_name_no_ext
-                    )
-                )
-                continue # Skip to the next file
-
-            full_file_path: str = os.path.join(input_folder, BCM_file_name)
-            try:
-                with open(full_file_path, "r", encoding="utf-8") as file_data:
-                    text_content: str = file_data.read()
-                    # For TXT, the book name is the file name, and content is the whole text
-                    processed_books[original_file_name_no_ext] = text_content
-            except FileNotFoundError:
-                print("Error: File not found at {}".format(full_file_path))
-            except IOError as e:
-                print("Error reading file {}: {}".format(full_file_path, e))
-        return processed_books
-
-
-class EpubFileReader(AbstractReader):
-    """Reads EPUB files."""
-
-    _HTML_BLACKLIST_TAGS: List[str] = [
-        "[document]", "noscript", "header", "html", "meta", "head", "input", "script",
-    ]
-
-    def _clean_html_content(self, html_chapter_content: bytes) -> str:
-        """Cleans HTML content from an EPUB chapter, extracting text."""
-        plain_text_output: str = ""
+class ReadTxt:
+    def __init__(self, file_path, file_name, mp3_dir):
+        self.name = file_name
+        self.path = file_path
+        self.files_dict = {}
         try:
-            soup: BeautifulSoup = BeautifulSoup(html_chapter_content, "html.parser")
-            text_elements: List[Tag] = soup.find_all(text=True)
-            for text_element in text_elements:
-                if text_element.parent.name not in self._HTML_BLACKLIST_TAGS:
-                    plain_text_output += "{} ".format(text_element)
+            self.mp3_files = files_dirs_manager.get_files_names(mp3_dir)
+        except FileNotFoundError:
+            print(f"Warning: MP3 directory '{mp3_dir}' not found for ReadTxt. Assuming no existing MP3s.")
+            self.mp3_files = []
+
+
+    def create_temporal_book(self):
+        mp3_file_name_check = self.name.replace(".txt", ".mp3")
+        if mp3_file_name_check in self.mp3_files:
+            print(f"File named = {mp3_file_name_check.split('.')[0]} already exists")
+            # Return empty or indicate skipped for UI consistency if needed
+            return {} 
+        else:
+            try:
+                with open(self.path, "r", encoding='utf-8') as data:
+                    text = data.read()
+                    file_name_base = self.name.split(".")[0]
+                    self.files_dict[file_name_base] = text
+            except FileNotFoundError:
+                print(f"Error: TXT file not found at {self.path}")
+                return {}
+            except Exception as e:
+                print(f"Error reading TXT file {self.path}: {e}")
+                return {}
+        return self.files_dict
+
+
+class ReadEPUB:
+    def __init__(self, file_path, file_name, mp3_dir):
+        self.name = file_name
+        self.path = file_path
+        self.book = {} # Stores chapter_key: chapter_text for the current EPUB
+        try:
+            self.mp3_files = files_dirs_manager.get_files_names(mp3_dir)
+        except FileNotFoundError:
+            print(f"Warning: MP3 directory '{mp3_dir}' not found for ReadEPUB. Assuming no existing MP3s.")
+            self.mp3_files = []
+
+        self.blacklist = ['[document]', 'noscript', 'header', 'html', 'meta', 'head', 'input', 'script']
+
+    def clean_text(self, chap_content):
+        output = ''
+        try:
+            soup = BeautifulSoup(chap_content, 'html.parser')
+            text_elements = soup.find_all(text=True)
+            for t_elem in text_elements:
+                if t_elem.parent.name not in self.blacklist:
+                    output += '{} '.format(t_elem)
         except Exception as e:
-            print("Error cleaning EPUB chapter text: {}".format(e))
-        return plain_text_output.strip()
+            print(f"Error cleaning EPUB chapter HTML: {e}")
+        return output.strip()
 
     @staticmethod
-    def _extract_epub_chapter_order(epub_opf_file_path: str) -> Dict[str, str]:
-        """
-        Gets the ordered chapter names (as keys with empty strings as values initially)
-        from an EPUB's OPF file.
-        """
-        ordered_chapters: Dict[str, str] = {}
+    def get_epub_index(file_dir_path):
+        opf_soup = files_dirs_manager.get_opf(file_dir_path)
+        if not opf_soup:
+            print(f"Could not get OPF data for {file_dir_path}")
+            return {}
+            
+        itemref_tags = opf_soup.find_all(name="itemref")
+        ordered_chapter_keys = []
+        
+        manifest_items = {item.get("id"): item.get("href") for item in opf_soup.find_all("item", href=True, id=True)}
+
+        for itemref_tag in itemref_tags:
+            idref = itemref_tag.get("idref")
+            if idref in manifest_items:
+                href = manifest_items[idref]
+                chapter_key = files_dirs_manager.get_item_name(href)
+                ordered_chapter_keys.append(chapter_key)
+            else:
+                print(f"Warning: idref '{idref}' found in spine but not in manifest for {file_dir_path}.")
+        
+        book_index = {key: "" for key in ordered_chapter_keys}
+        return book_index
+
+    def create_temporal_book(self): # 'folder' param removed, uses self.path
+        books_list = []
+        book_name_base = self.name.split(".")[0]
+
+        if files_dirs_manager.already_exists(book_name_base, self.mp3_files):
+            # already_exists (presumably) prints, so just return
+            return books_list 
+
         try:
-            opf_soup: Optional[BeautifulSoup] = file_system_manager.get_opf(epub_opf_file_path)
-            if not opf_soup:
-                print("Could not parse OPF file for {}".format(epub_opf_file_path))
-                return ordered_chapters
+            epub_book_obj = epub.read_epub(self.path)
+            self.book = self.get_epub_index(self.path) # Get ordered chapter structure
 
-            # Find all <itemref idref="..."> elements in the <spine>
-            # These define the linear reading order of the EPUB.
-            itemref_tags: List[Tag] = opf_soup.find_all("itemref")
-            manifest_items: Dict[str, str] = {
-                item.get("id"): item.get("href") for item in opf_soup.find_all("item", id=True, href=True)
-            }
+            if not self.book:
+                 print(f"Could not determine chapter order for {self.name}, skipping.")
+                 return books_list
 
-            for itemref in itemref_tags:
-                idref = itemref.get("idref")
-                if idref in manifest_items:
-                    # The href from the manifest is the actual chapter file path
-                    chapter_file_path: str = manifest_items[idref]
-                    # Use the filename (without extension) from the href as the chapter key
-                    chapter_key: str = file_system_manager.get_item_name(chapter_file_path)
-                    ordered_chapters[chapter_key] = "" # Initialize with empty content
-                else:
-                    print("Warning: idref {} not found in manifest of {}.".format(idref,epub_opf_file_path))
+            for item in epub_book_obj.get_items_of_type(ebooklib.ITEM_DOCUMENT):
+                item_key = files_dirs_manager.get_item_name(item.get_name())
+                if item_key in self.book: 
+                    self.book[item_key] = self.clean_text(item.get_content())
+                # else: item not in spine, ignore.
+            
+            # Filter out chapters that ended up empty after cleaning
+            # The self.book from get_epub_index has all spine items as keys.
+            # We only want to include chapters that actually yielded text.
+            contentful_chapters = {k: v for k, v in self.book.items() if v}
 
+            if contentful_chapters:
+                temporal_book_tuple = (book_name_base, contentful_chapters)
+                books_list.append(temporal_book_tuple)
+            else:
+                print(f"No text content extracted from EPUB {self.name} after cleaning.")
+        
+        except FileNotFoundError:
+            print(f"Error: EPUB file not found at {self.path}")
+            return [] # Return empty list on error
+        except epub.EpubException as e:
+            print(f"Error processing EPUB file {self.path}: {e}")
+            return []
         except Exception as e:
-            print("Error getting EPUB chapter order for {}: {}".format(epub_opf_file_path, e))
-        return ordered_chapters
+            print(f"An unexpected error occurred with EPUB {self.path}: {e}")
+            return []
+            
+        return books_list
 
 
-    def extract_book_content(
-        self, input_folder: str
-    ) -> List[Tuple[str, Dict[str, str]]]:
-        """Extracts content from EPUB files, maintaining chapter structure."""
-        processed_epub_books: List[Tuple[str, Dict[str, str]]] = []
-        for BCM_file_name in self.files_to_process:
-            book_name_no_ext: str = BCM_file_name.split(".")[0]
+class ReadPDF:
+    def __init__(self, file_path, file_name, mp3_dir):
+        self.name = file_name
+        self.path = file_path
+        self.book_chapters = {}
+        try:
+            self.mp3_files = files_dirs_manager.get_files_names(mp3_dir)
+        except FileNotFoundError:
+            print(f"Warning: MP3 directory '{mp3_dir}' not found for ReadPDF. Assuming no existing MP3s.")
+            self.mp3_files = []
+        
+        # Components are initialized here but managed per create_temporal_book call for safety
+        self.pdf_resource_manager = None
+        self.output_string_io = None
+        self.text_converter = None
+        self.page_interpreter = None
 
-            if not self._should_process_file(book_name_no_ext):
-                continue
-
-            full_file_path: str = os.path.join(input_folder, BCM_file_name)
-            file_extension: str = BCM_file_name.split(".")[-1].lower()
-
-            if file_extension == "epub":
-                try:
-                    # Initialize current_book_content for this EPUB
-                    self.current_book_content = self._extract_epub_chapter_order(full_file_path)
-                    if not self.current_book_content:
-                        print("Could not determine chapter order for {}, skipping.".format(book_name_no_ext))
-                        continue
-
-                    epub_book_obj: EpubBook = epub.read_epub(full_file_path)
-                    for item in epub_book_obj.get_items_of_type(ebooklib.ITEM_DOCUMENT):
-                        # item.get_name() often includes path like 'OEBPS/chapter1.xhtml'
-                        # get_item_name extracts 'chapter1'
-                        item_file_name_key: str = file_system_manager.get_item_name(
-                            item.get_name()
-                        )
-                        # Only process items that are part of the defined chapter order
-                        if item_file_name_key in self.current_book_content:
-                            self.current_book_content[item_file_name_key] = self._clean_html_content(
-                                item.get_content()
-                            )
-                        # else:
-                        #    print(f"Debug: Item '{item_file_name_key}' from EPUB not in ordered chapter list. Content type: {item.get_type()}")
-
-
-                    if any(self.current_book_content.values()): # Check if any content was actually extracted
-                        processed_epub_books.append(
-                            (book_name_no_ext, self.current_book_content.copy())
-                        )
-                    else:
-                        print("No content extracted for EPUB: {}".format(book_name_no_ext))
-                    self.current_book_content.clear() # Clear for the next book
-
-                except FileNotFoundError:
-                    print("Error: EPUB file not found at {}".format(full_file_path))
-                except epub.EpubException as e: # More specific exception
-                    print("Error processing EPUB file {}: {}".format(full_file_path, e))
-                except Exception as e:
-                    print("An unexpected error occurred with EPUB {}: {}".format(full_file_path, e))
-        return processed_epub_books
-
-
-class PdfFileReader(AbstractReader):
-    """Reads PDF files using pdfminer."""
-
-    # Max pages to process before creating a new "chapter" for the audiobook
-    _MAX_PAGES_PER_CHUNK: int = 8
-
-    def __init__(self, files_to_process: List[str], target_mp3_dir: str) -> None:
-        super().__init__(files_to_process, target_mp3_dir)
-        # These are initialized per PDF file (or chunk), not once per instance
-        self.pdf_resource_manager: Optional[PDFResourceManager] = None
-        self.text_converter_device: Optional[TextConverter] = None
-        self.page_interpreter: Optional[PDFPageInterpreter] = None
-        self.current_output_stream: Optional[StringIO] = None
-        self._initialize_pdf_processing_tools()
-
-    def _initialize_pdf_processing_tools(self) -> None:
-        """Initializes or re-initializes PDF processing components for a new PDF or chunk."""
-        if self.current_output_stream:
-            self.current_output_stream.close() # Ensure previous stream is closed
-
-        self.current_output_stream = StringIO()
+    def _initialize_pdf_components(self):
+        """Initializes pdfminer components for a new processing session or chunk."""
+        self._close_pdf_components() # Close any existing ones first
         self.pdf_resource_manager = PDFResourceManager()
-        self.text_converter_device = TextConverter(
-            self.pdf_resource_manager,
-            self.current_output_stream,
-            laparams=LAParams(),
-        )
-        self.page_interpreter = PDFPageInterpreter(
-            self.pdf_resource_manager, self.text_converter_device
-        )
+        self.output_string_io = StringIO()
+        self.text_converter = TextConverter(self.pdf_resource_manager, self.output_string_io, laparams=LAParams())
+        self.page_interpreter = PDFPageInterpreter(self.pdf_resource_manager, self.text_converter)
 
-    def _get_cleaned_pdf_text_from_stream(self) -> str:
-        """Cleans text extracted from the current PDF output stream."""
-        if not self.current_output_stream:
-            return ""
-        extracted_text: str = self.current_output_stream.getvalue()
-        extracted_text = extracted_text.replace("\x0c", "")  # Form feed
-        extracted_text = extracted_text.replace("\n", " ").replace("  ", " ")
-        # Example: extracted_text = extracted_text.replace("www.useless_text.com", "")
+    def _close_pdf_components(self):
+        """Safely closes pdfminer components."""
+        if hasattr(self, 'output_string_io') and self.output_string_io:
+            try:
+                self.output_string_io.close()
+            except Exception as e:
+                print(f"Error closing StringIO: {e}")
+            self.output_string_io = None
+        if hasattr(self, 'text_converter') and self.text_converter:
+            try:
+                self.text_converter.close()
+            except Exception as e:
+                print(f"Error closing TextConverter: {e}")
+            self.text_converter = None
+        # PDFResourceManager and PDFPageInterpreter do not have explicit close methods in typical usage.
+
+    def _clean_page_text(self):
+        if not self.output_string_io: return ""
+        extracted_text = self.output_string_io.getvalue()
+        extracted_text = extracted_text.replace("+", "") # Form feed (often \x0c)
+        extracted_text = extracted_text.replace("\n", " ")
+        extracted_text = " ".join(extracted_text.split()) 
         return extracted_text.strip()
 
+    def _reset_string_io_for_next_chunk(self):
+        # Re-initialize all components for a new chunk to ensure clean state
+        self._initialize_pdf_components()
 
-    def extract_book_content(
-        self, input_folder: str
-    ) -> List[Tuple[str, Dict[str, str]]]:
-        """
-        Extracts content from PDF files. Each PDF is treated as a book,
-        and its content is split into "chapters" based on page count.
-        """
-        processed_pdf_books: List[Tuple[str, Dict[str, str]]] = []
+    def create_temporal_book(self): # 'folder' param removed
+        processed_books_list = []
+        pages_processed_in_chunk = 0
+        chapter_idx = 0
+        book_name_base = self.name.split(".")[0]
+        self.book_chapters = {} # Reset for current book
 
-        for BCM_file_name in self.files_to_process:
-            book_name_no_ext: str = BCM_file_name.split(".")[0]
+        if files_dirs_manager.already_exists(book_name_base, self.mp3_files):
+            return processed_books_list
 
-            if not self._should_process_file(book_name_no_ext):
-                continue
+        try:
+            self._initialize_pdf_components() # Initialize for the first time for this file
 
-            full_file_path: str = os.path.join(input_folder, BCM_file_name)
-            file_extension: str = BCM_file_name.split(".")[-1].lower()
+            with open(self.path, 'rb') as in_file:
+                pdf_parser = PDFParser(in_file)
+                pdf_doc = PDFDocument(pdf_parser)
 
-            if file_extension == "pdf":
-                # current_book_content will store chapters for the current PDF
-                self.current_book_content.clear()
-                pages_in_current_chunk: int = 0
-                chapter_index: int = 0
+                for pdf_page in PDFPage.create_pages(pdf_doc):
+                    if not self.page_interpreter: # Should have been initialized
+                        print("PDFPageInterpreter not available.")
+                        break 
+                    self.page_interpreter.process_page(pdf_page)
+                    pages_processed_in_chunk += 1
+                    
+                    if pages_processed_in_chunk >= 8:
+                        page_text = self._clean_page_text()
+                        if page_text: 
+                            chapter_idx += 1
+                            self.book_chapters[str(chapter_idx)] = page_text
+                        self._reset_string_io_for_next_chunk() # Re-initializes components
+                        pages_processed_in_chunk = 0 
 
-                try:
-                    with open(full_file_path, "rb") as pdf_file:
-                        pdf_parser: PDFParser = PDFParser(pdf_file)
-                        pdf_document: PDFDocument = PDFDocument(pdf_parser)
+                if pages_processed_in_chunk > 0: # Process remaining pages
+                    page_text = self._clean_page_text()
+                    if page_text: 
+                       chapter_idx += 1
+                       self.book_chapters[str(chapter_idx)] = page_text
+            
+            if self.book_chapters: 
+                temporal_book_tuple = (book_name_base, self.book_chapters)
+                processed_books_list.append(temporal_book_tuple)
+            else:
+                print(f"No text content extracted from PDF {self.name}.")
 
-                        if not self.page_interpreter or not self.text_converter_device:
-                            print("PDF processing tools not initialized for {}".format(book_name_no_ext))
-                            continue
-
-                        # Initialize tools for the first chunk of this PDF
-                        self._initialize_pdf_processing_tools()
-
-                        for pdf_page in PDFPage.create_pages(pdf_document):
-                            self.page_interpreter.process_page(pdf_page)
-                            pages_in_current_chunk += 1
-
-                            if pages_in_current_chunk >= self._MAX_PAGES_PER_CHUNK:
-                                chapter_index += 1
-                                chapter_text: str = self._get_cleaned_pdf_text_from_stream()
-                                self.current_book_content[
-                                    str(chapter_index)
-                                ] = chapter_text
-                                # Reset for the next chunk
-                                self._initialize_pdf_processing_tools()
-                                pages_in_current_chunk = 0
-
-                        # Process any remaining pages as the last chapter
-                        if pages_in_current_chunk > 0:
-                            chapter_index += 1
-                            chapter_text: str = self._get_cleaned_pdf_text_from_stream()
-                            self.current_book_content[
-                                str(chapter_index)
-                            ] = chapter_text
-
-                    if self.current_book_content:
-                        processed_pdf_books.append(
-                            (book_name_no_ext, self.current_book_content.copy())
-                        )
-                    self.current_book_content.clear()
-
-                except FileNotFoundError:
-                    print("Error: PDF file not found at {}".format(full_file_path))
-                except Exception as e: # Catch other pdfminer or general errors
-                    print("Error processing PDF file {}: {}".format(full_file_path, e))
-                finally:
-                    # Ensure the last set of tools/stream is closed after processing a PDF
-                    if self.current_output_stream:
-                        self.current_output_stream.close()
-                        self.current_output_stream = None
-                    if self.text_converter_device:
-                        self.text_converter_device.close()
-                        self.text_converter_device = None
-        return processed_pdf_books
+        except FileNotFoundError:
+            print(f"Error: PDF file not found at {self.path}")
+        except Exception as e:
+            print(f"Error processing PDF file {self.path}: {e}")
+        finally:
+            self._close_pdf_components() # Ensure cleanup
+                
+        return processed_books_list
 
 
-# --- Factory and Orchestration Functions ---
-def get_temporal_books_from_files( # Renamed from get_temporal_books
-    selected_option: MenuOption,
-) -> Union[Dict[str, str], List[Tuple[str, Dict[str, str]]], None]:
-    """
-    Factory function to get a reader instance and extract book content
-    based on the user's menu selection.
-    """
-    file_extension_type: str = selected_option.name
-    input_directory: str = selected_option.value[0]
-    target_mp3_directory: str = selected_option.value[1]
+def get_temporal_books(file_path, file_name, mp3_directory):
+    file_ext = file_name.split(".")[-1].lower() 
+    reader_instance = None
+    if file_ext == "txt":
+        reader_instance = ReadTxt(file_path, file_name, mp3_directory)
+    elif file_ext == "epub":
+        reader_instance = ReadEPUB(file_path, file_name, mp3_directory)
+    elif file_ext == "pdf":
+        reader_instance = ReadPDF(file_path, file_name, mp3_directory)
+    else:
+        print(f"Unsupported file extension: {file_ext}")
+        return None 
 
-    try:
-        files_in_directory: List[str] = file_system_manager.get_files_names(
-            input_directory
-        )
-        if not files_in_directory:
-            print("No files found in directory: {}".format(input_directory))
-            return None
-
-        reader: Optional[AbstractReader] = None
-        if file_extension_type == "TXT":
-            reader = TextFileReader(files_in_directory, target_mp3_directory)
-        elif file_extension_type == "EPUB":
-            reader = EpubFileReader(files_in_directory, target_mp3_directory)
-        elif file_extension_type == "PDF":
-            reader = PdfFileReader(files_in_directory, target_mp3_directory)
-        else:
-            print("Unsupported file extension type: {}".format(file_extension_type))
-            return None
-
-        return reader.extract_book_content(input_directory)
-
-    except Exception as e:
-        print("Error getting temporal books: {}".format(e))
-        return None
+    if reader_instance:
+        return reader_instance.create_temporal_book()
+    return None
 
 
-def process_and_read_books( # Renamed from start_reading
-    voice_manager: VoiceManager, # voice_synthesizer (Voice) and voice_manager_settings (VoiceManager) combined
-    extracted_books_data: Union[
-        Dict[str, str], List[Tuple[str, Dict[str, str]]]
-    ],
-    selected_option: MenuOption,
-) -> None:
-    """Processes extracted book data and initiates text-to-speech reading."""
-    file_type_for_reading: str = selected_option.name
-    # For TXT, this is the single_file_mp3_library. For EPUB/PDF, it's my_mp3_books_library.
-    base_mp3_output_dir: str = selected_option.value[1]
+def start_reading(voice_instance, voice_manager_instance, temporal_book_data, mp3_dir_output, book_file_name_with_ext, ui_info_items):
+    if not temporal_book_data or (isinstance(temporal_book_data, list) and not temporal_book_data) or \
+       (isinstance(temporal_book_data, dict) and not any(temporal_book_data.values())):
+        print(f"No content to read for {book_file_name_with_ext}.")
+        if ui_info_items and ui_info_items.get("state_info"):
+            ui_info_items["state_info"].value = f"No content found in {book_file_name_with_ext} or file is empty."
+            ui_info_items["state_info"].update()
+        if ui_info_items and ui_info_items.get("progress_ring"):
+            ui_info_items["progress_ring"].visible = False
+            ui_info_items["progress_ring"].update()
+        if ui_info_items and ui_info_items.get("items_to_read"):
+             ui_info_items["items_to_read"].value = ""
+             ui_info_items["items_to_read"].update()
+        return
 
-    try:
-        if not extracted_books_data:
-            print("No book data to process for reading.")
-            return
+    file_extension = book_file_name_with_ext.split(".")[-1].lower()
 
-        # Case 1: Single file content (e.g., TXT files)
-        if isinstance(extracted_books_data, dict):
-            # Here, extracted_books_data is Dict[original_filename, content]
-            # The base_mp3_output_dir is already the final destination for TXT.
-            # The method 'read' in Voice class is now 'generate_speech_audio' in VoiceManager
-            voice_manager.generate_speech_audio(
-                text_content_map=extracted_books_data, # Pass the whole dict
-                output_folder_path=base_mp3_output_dir, # This is 'single_file_mp3_library/'
-                file_type=file_type_for_reading,
-            )
-        # Case 2: Multi-chapter books (e.g., EPUB, PDF)
-        elif isinstance(extracted_books_data, list):
-            # Here, extracted_books_data is List[Tuple[book_name, Dict[chapter_name, chapter_content]]]
-            for book_tuple in extracted_books_data:
-                book_main_name: str = book_tuple[0]
-                book_chapters_content: Dict[str, str] = book_tuple[1]
+    if file_extension == "txt": 
+        voice_instance.read(voice_manager_instance, file_extension, mp3_dir_output, temporal_book_data, ui_info_items)
+    
+    elif file_extension in ["epub", "pdf"]: 
+        # temporal_book_data is a list: [(book_name_base, {chapter_key: chapter_text})]
+        for book_item_tuple in temporal_book_data: # Should be only one item for single file picker
+            book_title_base, book_chapters_dict = book_item_tuple
+            cleaned_chapters_dict = clean_book_content(book_chapters_dict) # Clean chapters from this book
+            
+            if cleaned_chapters_dict:
+                # For EPUB/PDF, create a subdirectory for this book's chapters within mp3_dir_output
+                specific_book_output_dir = files_dirs_manager.create_mp3_directory(mp3_dir_output, book_title_base)
+                if not os.path.exists(specific_book_output_dir): 
+                    print(f"Error: Could not create/access directory {specific_book_output_dir} for {book_title_base}")
+                    if ui_info_items.get("state_info"):
+                        ui_info_items["state_info"].value = f"Error with output folder for {book_title_base}."
+                        ui_info_items["state_info"].update()
+                    continue 
 
-                cleaned_chapters: Dict[str, str] = clean_book_chapters(
-                    book_chapters_content
-                )
-                if cleaned_chapters:
-                    # For EPUB/PDF, a subdirectory is created for each book's MP3s
-                    specific_book_mp3_dir: str = file_system_manager.create_mp3_directory(
-                        base_mp3_output_dir, book_main_name # e.g., my_mp3_books_library/MyAwesomeBook/
-                    )
-                    voice_manager.generate_speech_audio(
-                        text_content_map=cleaned_chapters,
-                        output_folder_path=specific_book_mp3_dir,
-                        file_type=file_type_for_reading, # This will be 'EPUB' or 'PDF'
-                    )
-        else:
-            print(
-                "Invalid extracted_books_data type: {}".format(
-                    type(extracted_books_data)
-                )
-            )
-    except Exception as e:
-        print("Error during process_and_read_books: {}".format(e))
-
-# Ensure old function names are not exposed if other modules import *
-__all__ = ['get_temporal_books_from_files', 'process_and_read_books', 'clean_book_chapters',
-           'AbstractReader', 'TextFileReader', 'EpubFileReader', 'PdfFileReader']
+                voice_instance.read(voice_manager_instance, file_extension, specific_book_output_dir, cleaned_chapters_dict, ui_info_items)
+            else:
+                message = f"Book '{book_title_base}' in {book_file_name_with_ext} has no content after cleaning."
+                print(message)
+                if ui_info_items.get("state_info"):
+                    ui_info_items["state_info"].value = message
+                    ui_info_items["state_info"].update()
+    else:
+        message = f"Unsupported file format or empty content for: {book_file_name_with_ext}"
+        print(message)
+        if ui_info_items.get("state_info"):
+            ui_info_items["state_info"].value = message
+            ui_info_items["state_info"].update()
+    
+    # General UI cleanup after processing (or if no content was found initially)
+    if ui_info_items and ui_info_items.get("progress_ring"):
+        ui_info_items["progress_ring"].visible = False
+        ui_info_items["progress_ring"].update()
+    if ui_info_items and ui_info_items.get("items_to_read") and not ui_info_items["items_to_read"].value: # If not set by loop
+         ui_info_items["items_to_read"].value = "" # Or "Processing complete."
+         ui_info_items["items_to_read"].update()
