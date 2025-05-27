@@ -18,7 +18,7 @@ from ebooklib.epub import EpubBook, EpubHtml
 
 import files_dirs as file_system_manager # Renamed for clarity
 from menumanager import MenuOption
-from voicemanager import VoiceManager, Voice
+from voicemanager import VoiceManager # Voice class removed
 
 
 # --- Utility Functions ---
@@ -372,8 +372,7 @@ def get_temporal_books_from_files( # Renamed from get_temporal_books
 
 
 def process_and_read_books( # Renamed from start_reading
-    voice_synthesizer: Voice,
-    voice_manager_settings: VoiceManager,
+    voice_manager: VoiceManager, # voice_synthesizer (Voice) and voice_manager_settings (VoiceManager) combined
     extracted_books_data: Union[
         Dict[str, str], List[Tuple[str, Dict[str, str]]]
     ],
@@ -393,11 +392,11 @@ def process_and_read_books( # Renamed from start_reading
         if isinstance(extracted_books_data, dict):
             # Here, extracted_books_data is Dict[original_filename, content]
             # The base_mp3_output_dir is already the final destination for TXT.
-            voice_synthesizer.read(
-                voice_manager_settings,
-                file_type_for_reading,
-                base_mp3_output_dir, # This is 'single_file_mp3_library/'
-                extracted_books_data, # Pass the whole dict
+            # The method 'read' in Voice class is now 'generate_speech_audio' in VoiceManager
+            voice_manager.generate_speech_audio(
+                text_content_map=extracted_books_data, # Pass the whole dict
+                output_folder_path=base_mp3_output_dir, # This is 'single_file_mp3_library/'
+                file_type=file_type_for_reading,
             )
         # Case 2: Multi-chapter books (e.g., EPUB, PDF)
         elif isinstance(extracted_books_data, list):
@@ -414,11 +413,10 @@ def process_and_read_books( # Renamed from start_reading
                     specific_book_mp3_dir: str = file_system_manager.create_mp3_directory(
                         base_mp3_output_dir, book_main_name # e.g., my_mp3_books_library/MyAwesomeBook/
                     )
-                    voice_synthesizer.read(
-                        voice_manager_settings,
-                        file_type_for_reading, # This will be 'EPUB' or 'PDF'
-                        specific_book_mp3_dir,
-                        cleaned_chapters,
+                    voice_manager.generate_speech_audio(
+                        text_content_map=cleaned_chapters,
+                        output_folder_path=specific_book_mp3_dir,
+                        file_type=file_type_for_reading, # This will be 'EPUB' or 'PDF'
                     )
         else:
             print(

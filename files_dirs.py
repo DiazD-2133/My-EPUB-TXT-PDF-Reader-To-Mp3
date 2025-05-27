@@ -66,7 +66,8 @@ def get_opf(file_dir: str) -> Optional[BeautifulSoup]:
                 print("Error: OPF file not found in EPUB: {}".format(file_dir))
                 return None
 
-            soup: BeautifulSoup = BeautifulSoup(web_page_content, "html.parser")
+            # Use 'xml' parser for OPF files as they are XML, not HTML
+            soup: BeautifulSoup = BeautifulSoup(web_page_content, "xml")
             return soup
     except FileNotFoundError:
         print("Error: EPUB file not found at {}".format(file_dir))
