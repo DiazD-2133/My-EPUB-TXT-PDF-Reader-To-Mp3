@@ -15,9 +15,8 @@ from flet import (
 
 from configs import AppData
 
-# Updated imports for refactored backend
-from textreader import process_file_for_ui 
-from voicemanager import VoiceManager
+import textreader as reader_manager
+from voicemanager import VoiceManager, Voice
 
 
 def main(page: ft.Page):
@@ -113,49 +112,56 @@ def main(page: ft.Page):
         page.update() # Ensure immediate UI update
 
         try:
-            # Instantiate the refactored VoiceManager
-            voice_manager_instance = VoiceManager()
+            # These are from the Flet-specific voicemanager.py
+            reader_instance = VoiceManager() # Renamed from 'reader' to avoid conflict
+            voice_module = Voice()       # Renamed from 'voice'
 
             # Check if VoiceManager initialized correctly (engine is available)
-            if not voice_manager_instance.engine or not voice_manager_instance.current_voice:
-                error_msg = "Voice engine failed. Check installation or voice settings."
-                print(f"flet-app.py: {error_msg}") # Log for debugging
+            if not reader_instance.engine or not reader_instance.current_voice:
+                error_msg = "Voice engine failed to initialize. Check logs."
+                print(f"flet-app.py: {error_msg}")
                 info_items["state_info"].value = error_msg
                 info_items["progress_ring"].visible = False
-                info_items["items_to_read"].value = "" # Clear any "Preparing..." message
+                info_items["items_to_read"].value = ""
                 info_items["state_info"].update()
                 info_items["progress_ring"].update()
                 info_items["items_to_read"].update()
-                page.update()
                 return
 
-            # Call the new textreader function (process_file_for_ui)
-            # This function will internally call voice_manager_instance.generate_speech_audio
-            # and handle its own UI updates via info_items for the TTS part.
-            process_file_for_ui(
-                file_path, 
-                file_name, 
-                mp3_dir,  # This is mp3_output_root_dir for process_file_for_ui
-                voice_manager_instance, 
+            # 4. Call backend
+            # textreader.get_temporal_books(file_path, file_name, mp3_dir)
+            temporal_book = reader_manager.get_temporal_books(file_path, file_name, mp3_dir)
+
+            if not temporal_book or \
+               (isinstance(temporal_book, list) and not temporal_book) or \
+               (isinstance(temporal_book, dict) and not any(temporal_book.values())):
+                info_items["state_info"].value = f"Could not read '{file_name}' or file is empty/unsupported."
+                info_items["progress_ring"].visible = False
+                info_items["items_to_read"].value = "" # Clear reading status
+                info_items["state_info"].update()
+                info_items["progress_ring"].update()
+                info_items["items_to_read"].update()
+                return
+            
+            # textreader.start_reading(voice_module, reader_instance, temporal_book, mp3_dir, file_name, info_items)
+            # Note: In textreader.py, the 'ext' parameter was actually book_file_name_with_ext
+            reader_manager.start_reading(
+                voice_module, 
+                reader_instance, 
+                temporal_book, 
+                mp3_dir, # This is mp3_dir_output in start_reading
+                file_name, # This is book_file_name_with_ext in start_reading
                 info_items
             )
-            # Note: process_file_for_ui and generate_speech_audio should handle 
-            # hiding the progress ring and setting final messages in info_items.
-            # If they don't, a final reset might be needed here, but ideally, they manage their full lifecycle.
-
         except Exception as ex:
-            print(f"An unexpected error occurred in init_reading: {ex}")
-            # Update UI to reflect the error
-            if info_items.get("state_info"):
-                info_items["state_info"].value = f"An unexpected error occurred: {ex}"
-                info_items["state_info"].update()
-            if info_items.get("progress_ring"):
-                info_items["progress_ring"].visible = False
-                info_items["progress_ring"].update()
-            if info_items.get("items_to_read"):
-                info_items["items_to_read"].value = "Operation failed."
-                info_items["items_to_read"].update()
-            page.update() # Ensure UI reflects the error state
+            print(f"An error occurred during init_reading: {ex}")
+            info_items["state_info"].value = f"Error: {ex}"
+            info_items["progress_ring"].visible = False
+            info_items["items_to_read"].value = ""
+            info_items["state_info"].update()
+            info_items["progress_ring"].update()
+            info_items["items_to_read"].update()
+        # ProgressRing and final messages are now handled by Voice.read or the error blocks above
 
     # No_selected_files Text is already defined above with color.
     # audio_files, state_info, progress_ring, items_to_read are also defined.
