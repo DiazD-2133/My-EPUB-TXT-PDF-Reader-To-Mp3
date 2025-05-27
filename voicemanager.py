@@ -1,190 +1,333 @@
 import pyttsx3
-import os 
+import os
+import json
+from typing import Optional, Dict, Any, List, Tuple 
 
-from flet import ( 
-    Text, # Retaining as per prompt, though direct UI manipulation here is unusual
-)
+import flet as ft # For ft.Text used in _add_to_list
 
-from configs import AppData
+# --- Constants ---
+CONFIG_FILE_NAME = "voice_config.json"
+DEFAULT_LANGUAGE_INDEX = 0
+DEFAULT_SPEED_RATE = 150
+
+# --- Configuration Management ---
+def load_voice_config() -> Dict[str, Any]:
+    """Loads voice configuration (language index, speed rate) from JSON file."""
+    defaults = {"language_index": DEFAULT_LANGUAGE_INDEX, "speed_rate": DEFAULT_SPEED_RATE}
+    config_to_save = defaults.copy() # Start with defaults, update if file loads
+    needs_saving = False
+
+    try:
+        with open(CONFIG_FILE_NAME, 'r') as f:
+            loaded_config = json.load(f)
+            if not isinstance(loaded_config, dict):
+                print(f"Warning: {CONFIG_FILE_NAME} does not contain a valid JSON object. Using defaults and creating/overwriting file.")
+                needs_saving = True
+            else:
+                # Validate language_index
+                lang_idx = loaded_config.get("language_index")
+                if isinstance(lang_idx, int):
+                    config_to_save["language_index"] = lang_idx
+                else:
+                    print(f"Warning: 'language_index' in {CONFIG_FILE_NAME} is invalid. Using default.")
+                    needs_saving = True # Will save default for this key
+                
+                # Validate speed_rate
+                speed = loaded_config.get("speed_rate")
+                if isinstance(speed, int):
+                    config_to_save["speed_rate"] = speed
+                else:
+                    print(f"Warning: 'speed_rate' in {CONFIG_FILE_NAME} is invalid. Using default.")
+                    needs_saving = True # Will save default for this key
+                
+                # Check if all default keys are present, if not, file needs update
+                for key in defaults:
+                    if key not in loaded_config:
+                        print(f"Info: Key '{key}' not found in {CONFIG_FILE_NAME}. Adding default.")
+                        needs_saving = True # config_to_save already has it from defaults
+
+    except FileNotFoundError:
+        print(f"Info: {CONFIG_FILE_NAME} not found. Creating with default settings.")
+        needs_saving = True # config_to_save is already defaults
+    except json.JSONDecodeError:
+        print(f"Warning: Error decoding JSON from {CONFIG_FILE_NAME}. Creating with default settings.")
+        needs_saving = True # config_to_save is already defaults
+    except Exception as e:
+        print(f"Unexpected error loading {CONFIG_FILE_NAME}: {e}. Using defaults.")
+        needs_saving = True # config_to_save is already defaults
+
+    if needs_saving:
+        save_voice_config(config_to_save["language_index"], config_to_save["speed_rate"])
+    
+    return config_to_save
 
 
+def save_voice_config(language_index: int, speed_rate: int) -> None:
+    """Saves voice configuration to JSON file."""
+    config_data = {
+        "language_index": language_index,
+        "speed_rate": speed_rate,
+    }
+    try:
+        with open(CONFIG_FILE_NAME, "w") as f:
+            json.dump(config_data, f, indent=4)
+    except IOError as e:
+        print(f"Error saving voice configuration to {CONFIG_FILE_NAME}: {e}")
+    except Exception as e: # Catch other potential errors during save
+        print(f"An unexpected error occurred while saving configuration: {e}")
+
+
+# --- Voice Engine Manager ---
 class VoiceManager:
     def __init__(self):
-        self.app_data = AppData()
-        try:
-            # Use .get() for safer dictionary access, providing defaults
-            self.my_language_index = int(self.app_data.data.get("language", 0))
-        except (ValueError, TypeError):
-            print("Warning: Language index in config is invalid. Using default 0.")
-            self.my_language_index = 0 
+        self.config = load_voice_config() # load_voice_config now returns a complete config
+        self.current_language_index = self.config["language_index"] # Should exist due to load_voice_config logic
+        self.current_speed_rate = self.config["speed_rate"]     # Should exist
         
-        try:
-            self.speed_rate = int(self.app_data.data.get("speed_rate", 150))
-        except (ValueError, TypeError):
-            print("Warning: Speed rate in config is invalid. Using default 150.")
-            self.speed_rate = 150
+        self.engine: Optional[pyttsx3.Engine] = None
+        self.voices: List[pyttsx3.voice.Voice] = [] 
+        self.current_voice: Optional[pyttsx3.voice.Voice] = None
 
-        self.engine = None
-        self.voices = []
-        self.current_voice = None 
+        self._initialize_engine()
 
+    def _initialize_engine(self) -> None:
+        """Initializes the pyttsx3 engine, loads voices, and sets properties."""
         try:
             self.engine = pyttsx3.init()
-            if not self.engine: # Check if engine failed to initialize (some drivers might return None)
-                print("Error: pyttsx3 engine could not be initialized (returned None).")
-                return # Cannot proceed
-        except Exception as e: 
-            print(f"Error: pyttsx3 engine could not be initialized: {e}")
-            return 
+            if not self.engine:
+                print("Error: pyttsx3.init() returned None. Engine not initialized.")
+                return
+        except Exception as e:
+            print(f"Critical Error: pyttsx3 engine failed to initialize: {e}")
+            self.engine = None
+            return
 
         try:
-            self.engine.setProperty("rate", self.speed_rate)
+            self.engine.setProperty("rate", self.current_speed_rate)
             self.voices = self.engine.getProperty("voices")
-        except Exception as e: # Catch errors during property setting or voice retrieval
-            print(f"Error setting engine properties or getting voices: {e}")
-            self.engine = None 
-            return
 
-        if not self.voices:
-            print("Warning: No voices found by pyttsx3 engine.")
-        elif 0 <= self.my_language_index < len(self.voices): # Check bounds
-            self.current_voice = self.voices[self.my_language_index]
+            if not self.voices:
+                print("Warning: No voices found by pyttsx3 engine. Cannot set a voice.")
+                self.current_voice = None
+                return 
+
+            # Validate current_language_index
+            if not (0 <= self.current_language_index < len(self.voices)):
+                old_idx = self.current_language_index
+                self.current_language_index = DEFAULT_LANGUAGE_INDEX
+                print(f"Warning: Saved language index {old_idx} is out of range (0-{len(self.voices)-1}). Defaulting to {self.current_language_index}.")
+                # Persist the corrected index
+                save_voice_config(self.current_language_index, self.current_speed_rate)
+            
+            self.current_voice = self.voices[self.current_language_index]
             self.engine.setProperty("voice", self.current_voice.id)
-        else:
-            print(f"Warning: Saved language index {self.my_language_index} is out of range (0-{len(self.voices)-1}). Defaulting to first available voice.")
-            self.my_language_index = 0
-            if self.voices: # Ensure voices list is not empty
-                self.current_voice = self.voices[0]
-                self.engine.setProperty("voice", self.current_voice.id)
-                # Update and save the corrected default index
-                self.app_data.data["language"] = self.my_language_index
+            print(f"VoiceManager initialized: LangIdx={self.current_language_index}, Speed={self.current_speed_rate}, VoiceSet={self.current_voice.name if self.current_voice else 'None'}")
+
+        except Exception as e:
+            print(f"Error during engine property setting or voice retrieval: {e}")
+            self.engine = None 
+            self.voices = []
+            self.current_voice = None
+
+    # --- UI Helper Methods ---
+    def _update_ui_element(self, ui_key: str, property_name: str, value: Any, info_items: Optional[Dict[str, Any]]):
+        if info_items and ui_key in info_items:
+            control = info_items.get(ui_key)
+            if control and hasattr(control, 'update'): 
                 try:
-                    self.app_data.save_changes(self.app_data.data)
-                except Exception as e_save:
-                    print(f"Error saving corrected language index to config: {e_save}")
-            else:
-                print("Error: No voices available to set a default voice.")
+                    if property_name == "controls.append" and hasattr(control, 'controls'):
+                        control.controls.append(value)
+                    elif property_name == "controls.clear" and hasattr(control, 'controls'):
+                        control.controls.clear()
+                    else:
+                        setattr(control, property_name, value)
+                    control.update()
+                except Exception as e:
+                    print(f"Error updating UI element '{ui_key}' property '{property_name}': {e}")
 
-    # CLI-based methods - not directly used by Flet UI in this form.
-    def choose_speedRate(self):
-        # ... (implementation as provided in prompt, assuming it's for CLI debugging) ...
-        pass
+    def _set_text_value(self, ui_key: str, text_value: str, info_items: Optional[Dict[str, Any]]):
+        self._update_ui_element(ui_key, "value", text_value, info_items)
 
-    def change_speedRate(self):
-        # ... (implementation as provided in prompt, assuming it's for CLI debugging) ...
-        pass
+    def _set_visibility(self, ui_key: str, visible: bool, info_items: Optional[Dict[str, Any]]):
+        self._update_ui_element(ui_key, "visible", visible, info_items)
 
-    def select_language(self):
-        # ... (implementation as provided in prompt, assuming it's for CLI debugging) ...
-        pass
+    def _add_to_list(self, ui_key: str, item_text: str, info_items: Optional[Dict[str, Any]]):
+        # Create ft.Text here as it's a Flet specific object
+        self._update_ui_element(ui_key, "controls.append", ft.Text(item_text), info_items)
+    
+    def _clear_list(self, ui_key: str, info_items: Optional[Dict[str, Any]]):
+        self._update_ui_element(ui_key, "controls.clear", None, info_items)
 
-
-class Voice: 
-    @staticmethod
-    def read(voice_manager_instance, file_extension, folder_dir, files_data, info_items):
-        engine = voice_manager_instance.engine
-        engine = voice_manager_instance.engine
-        selected_voice = voice_manager_instance.current_voice
-
-        # Centralized UI update helper within this method
-        def update_ui_elements(state_msg="", items_msg="", ring_visible=False, clear_list=False, page_update_needed=False):
-            if not info_items: return 
-            
-            state_info_control = info_items.get("state_info")
-            if state_info_control:
-                state_info_control.value = state_msg
-                state_info_control.update()
-            
-            items_to_read_control = info_items.get("items_to_read")
-            if items_to_read_control:
-                items_to_read_control.value = items_msg
-                items_to_read_control.update()
-
-            progress_ring_control = info_items.get("progress_ring")
-            if progress_ring_control:
-                progress_ring_control.visible = ring_visible
-                progress_ring_control.update()
-            
-            if clear_list:
-                audio_list_control = info_items.get("audio_files_list")
-                if audio_list_control and hasattr(audio_list_control, "controls"):
-                    audio_list_control.controls.clear()
-                    audio_list_control.update()
-            
-            # If page object is available and an update ishinted (e.g. after multiple control updates)
-            # This part is more complex as page is not directly passed here.
-            # For now, individual control updates should suffice.
-
-        if not engine or not selected_voice:
-            err_msg = "Voice engine not ready or no voice selected. Check console for errors."
-            print(f"Error in Voice.read: {err_msg}")
-            update_ui_elements(state_msg=err_msg, ring_visible=False)
-            return
-
-        update_ui_elements(clear_list=True) # Clear previous list items at the start
-
-        total_items = len(files_data)
-        if total_items == 0:
-            update_ui_elements(state_msg="No text data found to process.", ring_visible=False)
-            return
+    def generate_speech_audio(self, text_content_map: Dict[str, str], 
+                              output_folder_path: str, file_type: str, 
+                              info_items: Optional[Dict[str, Any]] = None):
         
+        if not self.engine or not self.current_voice:
+            err_msg = "Voice engine not ready or no voice selected. Initialize VoiceManager or check logs."
+            print(f"Error in generate_speech_audio: {err_msg}")
+            self._set_text_value("state_info", err_msg, info_items)
+            self._set_visibility("progress_ring", False, info_items)
+            return
+
+        self._clear_list("audio_files_list", info_items)
+        self._set_text_value("state_info", "Starting audio generation...", info_items)
+        self._set_text_value("items_to_read", "Preparing...", info_items)
+        self._set_visibility("progress_ring", True, info_items)
+
+        item_count = 0
+        total_items = len(text_content_map)
         all_successful = True
-        processed_item_idx = 0 # Using idx for 0-based counting internally, display as idx+1
 
-        for data_name, text_content in files_data.items():
-            processed_item_idx += 1
-            print(f"\nProcessing item {processed_item_idx} of {total_items}: {data_name}")
+        if total_items == 0:
+            self._set_text_value("state_info", "No text content provided to process.", info_items)
+            self._set_visibility("progress_ring", False, info_items)
+            return
 
-            display_data_name = data_name[:30] + "..." if len(data_name) > 30 else data_name
-            current_item_msg = f"Reading {processed_item_idx}/{total_items}: {display_data_name}"
-            update_ui_elements(state_msg=f"Generating: {display_data_name}", items_msg=current_item_msg, ring_visible=True)
+        for item_name, text_content in text_content_map.items():
+            item_count += 1
+            display_item_name = item_name[:35] + "..." if len(item_name) > 35 else item_name
             
+            self._set_text_value("state_info", f"Generating: {display_item_name}", info_items)
+            self._set_text_value("items_to_read", f"Processing {item_count}/{total_items}: {display_item_name}", info_items)
+
             zeros = ""
-            # Use processed_item_idx for numbering if not TXT
-            if file_extension.lower() != "txt":
-                if processed_item_idx <= 9: zeros = "00"
-                elif processed_item_idx <= 99: zeros = "0"
+            filename_prefix = ""
+            if file_type.lower() != "txt":
+                if item_count <= 9: zeros = "00"
+                elif item_count <= 99: zeros = "0"
+                filename_prefix = f"{zeros}{item_count} - "
             
-            safe_data_name = "".join(c if c.isalnum() or c in " .-_()" else "_" for c in data_name)
-            max_len_data_name = 100 
-            safe_data_name = safe_data_name[:max_len_data_name]
+            safe_item_name = "".join(c if c.isalnum() or c in " .-_" else "_" for c in item_name)
+            safe_item_name = safe_item_name[:100] 
+            
+            mp3_file_name = f"{filename_prefix}{safe_item_name}.mp3"
 
-            mp3_file_name = f"{zeros}{processed_item_idx} - {safe_data_name}.mp3" if file_extension.lower() != "txt" else f"{safe_data_name}.mp3"
-            
-            if not os.path.exists(folder_dir):
+            if not os.path.exists(output_folder_path):
                 try:
-                    os.makedirs(folder_dir, exist_ok=True)
+                    os.makedirs(output_folder_path, exist_ok=True)
+                    print(f"Info: Created output directory {output_folder_path}")
                 except OSError as e:
-                    print(f"Error creating output directory {folder_dir}: {e}")
-                    update_ui_elements(state_msg=f"Error creating folder: {e}", ring_visible=False)
-                    # Do not return; allow other items to be processed if possible, or set flag
-                    all_successful = False 
-                    continue # Skip this item
+                    print(f"Error creating directory {output_folder_path}: {e}")
+                    self._set_text_value("state_info", f"Error creating directory: {e}", info_items)
+                    all_successful = False
+                    continue 
 
-            full_file_path = os.path.join(folder_dir, mp3_file_name)
+            full_file_path = os.path.join(output_folder_path, mp3_file_name)
 
             try:
-                engine.setProperty("voice", selected_voice.id)
-                engine.save_to_file(text_content, full_file_path)
-                engine.runAndWait()
-
-                audio_list_control = info_items.get("audio_files_list")
-                if audio_list_control and hasattr(audio_list_control, "controls"):
-                    audio_list_control.controls.append(Text(mp3_file_name))
-                    audio_list_control.update()
-                print(f"Done! File saved as {full_file_path}")
+                self.engine.setProperty("voice", self.current_voice.id) # Ensure voice is set for this operation
+                self.engine.save_to_file(text_content, full_file_path)
+                self.engine.runAndWait()
+                self._add_to_list("audio_files_list", mp3_file_name, info_items) # Pass text of filename
+                print(f"Successfully saved: {full_file_path}")
             except Exception as e:
-                print(f"Error saving file {mp3_file_name}: {e}")
-                # Update state_info for this specific error, but it might be overwritten by the next item's status
-                # This is acceptable as the final message will indicate overall success/failure.
-                if info_items.get("state_info"): # Update for immediate feedback on current item
-                     info_items["state_info"].value = f"Error saving {display_data_name}"
-                     info_items["state_info"].update()
-                all_successful = False # Mark that at least one error occurred
+                print(f"Error saving MP3 {full_file_path}: {e}")
+                self._set_text_value("state_info", f"Error saving: {display_item_name}", info_items)
+                all_successful = False
         
-        # Final UI update after the loop
-        final_state_message = f"Finished processing {total_items} items."
-        if not all_successful:
-            final_state_message = "Processing finished with some errors. Check console/logs."
+        self._set_visibility("progress_ring", False, info_items)
+        final_message = "Finished audio generation successfully." if all_successful else "Finished with some errors. Check console."
+        self._set_text_value("state_info", final_message, info_items)
+        self._set_text_value("items_to_read", "Processing complete.", info_items)
+
+    def update_voice_settings(self, lang_index: Optional[int] = None, speed: Optional[int] = None) -> None:
+        """Updates voice language index and/or speed rate, saves config, and re-initializes engine."""
+        config_changed = False
+        # Use temporary variables to check before assigning to self
+        temp_lang_idx = self.current_language_index
+        temp_speed_rate = self.current_speed_rate
+
+        if lang_index is not None and isinstance(lang_index, int) and lang_index != temp_lang_idx:
+            temp_lang_idx = lang_index
+            config_changed = True
         
-        update_ui_elements(state_msg=final_state_message, items_msg="Processing complete.", ring_visible=False)
+        if speed is not None and isinstance(speed, int) and speed != temp_speed_rate:
+            temp_speed_rate = speed
+            config_changed = True
+        
+        if config_changed:
+            print(f"Updating voice settings: LangIdx={temp_lang_idx}, Speed={temp_speed_rate}")
+            self.current_language_index = temp_lang_idx
+            self.current_speed_rate = temp_speed_rate
+            save_voice_config(self.current_language_index, self.current_speed_rate)
+            self._initialize_engine() # Re-initialize with new settings
+        else:
+            print("Voice settings not changed or invalid types provided.")
+
+    # CLI-based methods (can be adapted or used for debugging)
+    def change_speed_rate_cli(self):
+        try:
+            new_speed_str = input(f"Current speed: {self.current_speed_rate}. New speed (e.g., 150): ")
+            new_speed = int(new_speed_str)
+            if 50 <= new_speed <= 500: # Basic range check
+                 self.update_voice_settings(speed=new_speed)
+            else:
+                print("Speed out of reasonable range (50-500).")
+        except ValueError:
+            print("Invalid input. Please enter a number.")
+
+    def select_language_cli(self):
+        if not self.voices:
+            print("No voices available.")
+            return
+        print("\nAvailable voices:")
+        for i, voice in enumerate(self.voices):
+            print(f"{i}: {voice.name} (ID: {voice.id})")
+        try:
+            new_idx_str = input(f"Current language index: {self.current_language_index}. New index: ")
+            new_idx = int(new_idx_str)
+            if 0 <= new_idx < len(self.voices):
+                self.update_voice_settings(lang_index=new_idx)
+            else:
+                print("Index out of range.")
+        except ValueError:
+            print("Invalid input. Please enter a number.")
+
+# Note: The old static 'Voice' class is intentionally removed as per instructions.
+# All its functionality is now integrated into 'VoiceManager.generate_speech_audio'
+# and the UI helper methods within the VoiceManager class.I have successfully overwritten `voicemanager.py` with the new structure in the previous turn.
+
+**Summary of changes implemented in `voicemanager.py` (Turn 1):**
+
+1.  **File Structure**: The content of `voicemanager.py` was replaced with the "Target Structure". This means the old Flet-specific `Voice` static class was removed, and its functionality was integrated into `VoiceManager.generate_speech_audio`.
+2.  **Configuration Management (`load_voice_config`, `save_voice_config`)**:
+    *   Implemented `load_voice_config` to read from `voice_config.json`. It handles `FileNotFoundError`, `json.JSONDecodeError`, and basic type validation for `language_index` and `speed_rate`. If the file is missing, corrupt, or keys are invalid/missing, it defaults to `DEFAULT_LANGUAGE_INDEX` (0) and `DEFAULT_SPEED_RATE` (150), and calls `save_voice_config` to create/update the JSON file.
+    *   Implemented `save_voice_config` to write the `language_index` and `speed_rate` to `voice_config.json` with `indent=4`. It includes basic `IOError` handling.
+3.  **`VoiceManager.__init__`**:
+    *   Calls `load_voice_config` to initialize `self.config`.
+    *   Sets `self.current_language_index` and `self.current_speed_rate` from this loaded config.
+    *   Calls `self._initialize_engine()`.
+4.  **`VoiceManager._initialize_engine`**:
+    *   Initializes `self.engine = pyttsx3.init()`, with error handling if `pyttsx3` fails.
+    *   Sets the engine's speed rate property.
+    *   Retrieves available voices using `self.engine.getProperty("voices")`. Handles cases where no voices are found.
+    *   Validates `self.current_language_index` against the list of available voices. If the index is out of bounds or invalid, it defaults to the first available voice (index 0) and updates `voice_config.json` by calling `save_voice_config`.
+    *   Sets `self.current_voice` based on the (potentially corrected) index and sets the engine's voice property.
+    *   Includes error handling for `pyttsx3` property setting.
+5.  **UI Helper Methods (`_update_ui_element`, `_set_text_value`, `_set_visibility`, `_add_to_list`, `_clear_list`)**:
+    *   Implemented these private methods within `VoiceManager` to provide a structured way to interact with Flet UI elements passed via the `info_items` dictionary. They handle checking for control existence and calling `.update()`. `_add_to_list` now correctly creates an `ft.Text` object.
+6.  **`VoiceManager.generate_speech_audio`**:
+    *   This method now contains the core TTS loop and integrates UI feedback logic.
+    *   Accepts `info_items: Optional[Dict[str, Any]] = None` for UI updates.
+    *   **Initial UI Setup**: Clears the `audio_files_list`, shows the `progress_ring`, and sets initial messages for `state_info` and `items_to_read` using the UI helper methods.
+    *   **Engine/Voice Check**: If `self.engine` or `self.current_voice` is `None` (due to initialization issues), it updates `state_info` with an error message, hides the progress ring, and returns.
+    *   **Empty Data Check**: If `text_content_map` is empty, updates UI and returns.
+    *   **Processing Loop**:
+        *   Iterates through `text_content_map`. For each item:
+            *   Updates `state_info` (e.g., "Generating: {item_name}") and `items_to_read` (e.g., "Processing {count}/{total}: {item_name}").
+            *   Generates safe filenames, including numbered prefixes for non-TXT files (using `item_count`).
+            *   Ensures the `output_folder_path` exists using `os.makedirs(..., exist_ok=True)`.
+            *   Calls `self.engine.save_to_file()` and `self.engine.runAndWait()` within a `try-except` block.
+            *   If successful, adds the filename as an `ft.Text` object to `audio_files_list`.
+            *   If an error occurs during saving, it updates `state_info` with an error for that item and sets an `all_successful` flag to `False`.
+    *   **Final UI Updates**: After the loop, it hides the `progress_ring`. Sets `items_to_read` to "Processing complete." Updates `state_info` to "Finished audio generation successfully." or "Finished with some errors." based on the `all_successful` flag.
+7.  **`VoiceManager.update_voice_settings`**:
+    *   Implemented to allow changing `current_language_index` and/or `current_speed_rate`.
+    *   Calls `save_voice_config` to persist changes.
+    *   Calls `self._initialize_engine()` to apply the new settings to the TTS engine.
+8.  **CLI Methods (`change_speed_rate_cli`, `select_language_cli`)**:
+    *   Added as placeholders, using `update_voice_settings` internally.
+9.  **Removed Old `Voice` Class**: The static `Voice` class that previously held the `read` method was removed.
+10. **Imports**: Ensured `json`, `os`, `pyttsx3`, `typing` hints, and `flet as ft` (for `ft.Text`) are correctly imported.
+
+The `voicemanager.py` file now aligns with the target structure, integrating robust configuration management, engine initialization, and detailed Flet UI feedback directly into the `VoiceManager` class, primarily within its `generate_speech_audio` method.
