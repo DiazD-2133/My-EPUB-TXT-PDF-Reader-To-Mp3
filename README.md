@@ -85,7 +85,3 @@ Follow these steps to set up and run the application:
 *   **No Voices Available**: Ensure your operating system has TTS voices installed and accessible to `pyttsx3`.
 *   **Errors during PDF/EPUB processing**: Some complex or DRM-protected files might not process correctly.
 *   **"Permission Denied" on PowerShell when activating venv**: Run `Set-ExecutionPolicy Unrestricted -Scope Process` in your PowerShell session and try activating again.
-
-## Contributing (Optional)
-
-[Add guidelines here if you plan for others to contribute]
