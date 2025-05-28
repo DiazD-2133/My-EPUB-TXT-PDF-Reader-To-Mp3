@@ -1,268 +1,216 @@
-import json
-import os
 import pyttsx3
-from typing import List, Dict, Tuple, Optional
+import os
+from configs import AppData
+from flet import Text  # For UI updates, passed via info_items
 
 
-# --- Constants ---
-VOICE_CONFIG_FILE = "voice_config.json"
-DEFAULT_LANGUAGE_INDEX = 0
-DEFAULT_SPEED_RATE = 150
-
-
-# --- Configuration Management ---
-def load_voice_config() -> Tuple[int, int]:
-    """Loads voice configuration (language index, speed rate) from JSON file."""
-    try:
-        with open(VOICE_CONFIG_FILE, "r") as f:
-            config_data = json.load(f)
-            language_index = int(config_data.get("language_index", DEFAULT_LANGUAGE_INDEX))
-            speed_rate = int(config_data.get("speed_rate", DEFAULT_SPEED_RATE))
-            return language_index, speed_rate
-    except FileNotFoundError:
-        print(
-            "Warning: {} not found. Using default voice settings and creating file.".format(
-                VOICE_CONFIG_FILE
-            )
-        )
-        save_voice_config(DEFAULT_LANGUAGE_INDEX, DEFAULT_SPEED_RATE)
-        return DEFAULT_LANGUAGE_INDEX, DEFAULT_SPEED_RATE
-    except (json.JSONDecodeError, ValueError) as e: # Catch invalid JSON or int conversion errors
-        print(
-            "Warning: Invalid data in {}: {}. Using defaults and recreating file.".format(
-                VOICE_CONFIG_FILE, e
-            )
-        )
-        save_voice_config(DEFAULT_LANGUAGE_INDEX, DEFAULT_SPEED_RATE) # Overwrite with defaults
-        return DEFAULT_LANGUAGE_INDEX, DEFAULT_SPEED_RATE
-    except Exception as e: # Catch-all for other IOErrors or unexpected issues
-        print(
-            "Error loading voice config from {}: {}. Using default settings.".format(
-                VOICE_CONFIG_FILE, e
-            )
-        )
-        return DEFAULT_LANGUAGE_INDEX, DEFAULT_SPEED_RATE
-
-
-def save_voice_config(language_index: int, speed_rate: int) -> None:
-    """Saves voice configuration to JSON file."""
-    config_data = {
-        "language_index": language_index,
-        "speed_rate": speed_rate,
-    }
-    try:
-        with open(VOICE_CONFIG_FILE, "w") as f:
-            json.dump(config_data, f, indent=4)
-    except IOError as e:
-        print("Error saving voice configuration to {}: {}".format(VOICE_CONFIG_FILE, e))
-
-
-# --- Voice Engine Manager ---
 class VoiceManager:
-    """Manages voice settings and the pyttsx3 text-to-speech engine."""
+    def __init__(self, app_data: AppData):
+        self.app_data = app_data
+        self.engine = None
+        self.voices_map = {}  # Stores {voice.id: voice.name}
+        self.current_voice_id = None
+        self.speed_rate = 150
 
-    def __init__(self) -> None:
-        self.language_index, self.speed_rate = load_voice_config()
-        self.engine: Optional[pyttsx3.Engine] = None
-        self.voices: List[pyttsx3.voice.Voice] = []
-        self.current_voice: Optional[pyttsx3.voice.Voice] = None
+        self._load_config_and_initialize_engine()
 
-        self._initialize_engine()
+    def _load_config_and_initialize_engine(self):
+        # Load config
+        try:
+            # Use .get for safer dictionary access
+            self.current_voice_id = self.app_data.data.get("voice_id")
+            self.speed_rate = int(self.app_data.data.get("speed_rate", 150))
+        except (ValueError, TypeError):
+            print("Warning: Voice config data is invalid or types are wrong. Using defaults.")
+            self.current_voice_id = None  # Will be set to default later
+            self.speed_rate = 150
+            # Mark for rewrite if types were wrong
+            self.app_data.data["voice_id"] = self.current_voice_id
+            self.app_data.data["speed_rate"] = self.speed_rate
+            self.save_settings()
 
-    def _initialize_engine(self) -> None:
-        """Initializes the pyttsx3 engine and loads available voices."""
+        # Initialize engine
         try:
             self.engine = pyttsx3.init()
-            if not self.engine: # Check if engine failed to initialize
-                print("Error: pyttsx3 engine could not be initialized.")
+            if not self.engine:
+                print("Error: pyttsx3 engine could not be initialized (returned None).")
                 return
 
-            self.voices = self.engine.getProperty("voices")
-            if not self.voices:
-                print("Error: No voices available on the system.")
-                self.engine = None # Disable engine if no voices
+            available_voices = self.engine.getProperty("voices")
+            if not available_voices:
+                print("Warning: No voices found by pyttsx3 engine.")
+                self.engine = None  # Mark as not available
                 return
 
-            # Validate and set current voice
-            if not (0 <= self.language_index < len(self.voices)):
+            for v in available_voices:
+                self.voices_map[v.id] = v.name
+
+            # Set voice
+            if self.current_voice_id and self.current_voice_id in self.voices_map:
+                self.engine.setProperty("voice", self.current_voice_id)
+            elif available_voices:  # Default to first voice if saved one is invalid or not set
+                default_voice = available_voices[0]
+                self.current_voice_id = default_voice.id
                 print(
-                    "Warning: Saved language index {} is invalid. Resetting to default {}.".format(
-                        self.language_index, DEFAULT_LANGUAGE_INDEX
-                    )
-                )
-                self.language_index = DEFAULT_LANGUAGE_INDEX
-                save_voice_config(self.language_index, self.speed_rate) # Save corrected index
+                    f"Info: Defaulting to voice: {self.voices_map.get(self.current_voice_id, 'Unknown')} ({self.current_voice_id})")
+                self.engine.setProperty("voice", self.current_voice_id)
+                self.app_data.data["voice_id"] = self.current_voice_id  # Save corrected/default ID
+                self.save_settings()  # Save immediately
+            else:  # No voices, no current_voice_id
+                self.current_voice_id = None
+                print("Error: No voices available to set a default voice.")
+                self.engine = None  # Mark as not available
+                return
 
-            self.current_voice = self.voices[self.language_index]
-            self.engine.setProperty("voice", self.current_voice.id)
+            # Set speed
             self.engine.setProperty("rate", self.speed_rate)
 
-        except RuntimeError as e: # Catch pyttsx3 runtime errors
-            print("RuntimeError initializing text-to-speech engine: {}".format(e))
+        except Exception as e:
+            print(f"Error: pyttsx3 engine initialization or property setting failed: {e}")
             self.engine = None
-            self.voices = []
-            self.current_voice = None
-        except Exception as e: # Catch any other unexpected errors
-            print("Unexpected error initializing text-to-speech engine: {}".format(e))
-            self.engine = None
-            self.voices = []
-            self.current_voice = None
 
-    def _get_user_confirmation(self, prompt: str) -> bool:
-        """Gets a 'y/n' confirmation from the user."""
-        while True:
-            user_input: str = input(prompt + " (y/n): ").lower()
-            if user_input == "y":
-                return True
-            if user_input == "n":
-                return False
-            print("Invalid input. Please enter 'y' or 'n'.")
+    def get_available_voices(self) -> dict:
+        """Returns a dictionary of available voices {id: name}."""
+        return self.voices_map.copy()
 
-    def _prompt_for_speed_rate(self) -> Optional[int]:
-        """Prompts the user for a new speed rate and validates it."""
-        while True:
-            try:
-                speed_rate_str: str = input(
-                    "\nEnter the new voice speed rate (e.g., 150).\n"
-                    "Recommended: 120 (slower) to 180 (faster): "
-                )
-                new_speed_rate: int = int(speed_rate_str)
-                if 50 <= new_speed_rate <= 500: # Basic sanity check for rate
-                    return new_speed_rate
-                else:
-                    print("Speed rate seems too low or high. Please choose a value between 50 and 500.")
-            except ValueError:
-                print("Invalid input. Please enter a number for the speed rate.")
-            
-            if not self._get_user_confirmation("Try entering speed rate again?"):
-                return None
+    def get_current_voice_id(self) -> str | None:
+        return self.current_voice_id
 
+    def set_current_voice_id(self, voice_id: str):
+        if self.engine and voice_id in self.voices_map:
+            self.current_voice_id = voice_id
+            self.engine.setProperty("voice", self.current_voice_id)
+            self.app_data.data["voice_id"] = self.current_voice_id
+            # self.save_settings() # Save is handled by a dedicated button in UI
+        elif not self.engine:
+            print("Warning: Could not set voice ID. Engine not ready.")
+        else:
+            print(f"Warning: Voice ID '{voice_id}' not found in available voices.")
 
-    def change_speed_rate(self) -> None:
-        """Allows the user to change the voice speed rate."""
-        if not self.engine:
-            print("Voice engine not available. Cannot change speed rate.")
-            return
+    def get_speed_rate(self) -> int:
+        return self.speed_rate
 
-        print("\nCurrent speed rate: {}".format(self.speed_rate))
-        if self._get_user_confirmation("Do you want to change the voice speed rate?"):
-            new_speed = self._prompt_for_speed_rate()
-            if new_speed is not None:
-                self.speed_rate = new_speed
-                try:
-                    self.engine.setProperty("rate", self.speed_rate)
-                    save_voice_config(self.language_index, self.speed_rate)
-                    print("Voice speed rate changed to {}.".format(self.speed_rate))
-                except Exception as e:
-                    print("Error setting new speed rate: {}".format(e))
-
-
-    def select_language(self) -> None:
-        """Allows the user to select a new voice language."""
-        if not self.engine or not self.voices:
-            print("Voice engine or voices not available. Cannot select language.")
-            return
-
-        current_lang_name = "Unknown"
-        if self.current_voice:
-            try:
-                current_lang_name = self.current_voice.name.split("-")[1].split()[0]
-            except (AttributeError, IndexError):
-                pass # Keep as Unknown
-        print("\nCurrent language: {}".format(current_lang_name))
-
-        if not self._get_user_confirmation("Do you want to change the language?"):
-            return
-
-        print("\nAvailable voices:")
-        for i, voice_obj in enumerate(self.voices):
-            try:
-                lang_name_display = voice_obj.name # More descriptive name
-            except (AttributeError, IndexError):
-                lang_name_display = "Unknown Voice {}".format(i + 1)
-            print("{}: {}".format(i + 1, lang_name_display))
-
-        while True:
-            try:
-                choice_str = input("Choose voice by its number (or 0 to cancel): ")
-                choice = int(choice_str)
-                if choice == 0:
-                    return
-                if 1 <= choice <= len(self.voices):
-                    self.language_index = choice - 1
-                    self.current_voice = self.voices[self.language_index]
-                    self.engine.setProperty("voice", self.current_voice.id)
-                    save_voice_config(self.language_index, self.speed_rate)
-                    try:
-                        new_lang_name = self.current_voice.name.split("-")[1].split()[0]
-                    except: new_lang_name = "Selected"
-                    print("Language changed to {}.".format(new_lang_name))
-                    break
-                else:
-                    print("Invalid choice. Please select a number from the list.")
-            except ValueError:
-                print("Invalid input. Please enter a number.")
-            except Exception as e:
-                print("Error setting new language: {}".format(e))
-                break
-
-    def generate_speech_audio(
-        self,
-        text_content_map: Dict[str, str], # chapter_name -> chapter_text
-        output_folder_path: str,
-        file_type: str, # To determine naming convention (TXT vs others)
-    ) -> None:
-        """
-        Generates MP3 audio files from the given text content.
-        For 'TXT', files are named directly. For others, they are numbered.
-        """
-        if not self.engine or not self.current_voice:
-            print("Text-to-speech engine is not available. Cannot generate audio.")
-            return
-
-        if not os.path.exists(output_folder_path):
-            try:
-                os.makedirs(output_folder_path, exist_ok=True)
-            except OSError as e:
-                print("Error creating output directory {}: {}".format(output_folder_path, e))
-                return
-
-        item_count = 0
-        total_items = len(text_content_map)
-
-        for item_name, text_to_read in text_content_map.items():
-            item_count += 1
-            print(
-                "\nProcessing item {} of {}: {}...".format(
-                    item_count, total_items, item_name
-                )
-            )
-
-            base_mp3_filename = item_name + ".mp3"
-            if file_type.upper() == "TXT":
-                # For TXT, item_name is the original filename (without .txt)
-                # Output path is directly in the 'single_file_mp3_library/'
-                final_output_path = os.path.join(output_folder_path, base_mp3_filename)
+    def set_speed_rate(self, rate: int):
+        if self.engine:
+            # Add validation for rate if desired (e.g., 50 to 500)
+            if 50 <= rate <= 500:
+                self.speed_rate = rate
+                self.engine.setProperty("rate", self.speed_rate)
+                self.app_data.data["speed_rate"] = self.speed_rate
+                # self.save_settings() # Save is handled by a dedicated button in UI
             else:
-                # For EPUB/PDF, item_name is the chapter name/number
-                # Files are numbered and placed in a book-specific subfolder
-                # e.g., my_mp3_books_library/BookTitle/001 - ChapterName.mp3
-                padded_count = "{:03d}".format(item_count)
-                final_mp3_filename = "{} - {}".format(padded_count, base_mp3_filename)
-                final_output_path = os.path.join(output_folder_path, final_mp3_filename)
+                print(f"Warning: Speed rate {rate} is out of a reasonable range (50-500). Not set.")
+        else:
+            print("Warning: Could not set speed rate. Engine not ready.")
+
+    def save_settings(self):
+        try:
+            self.app_data.save_changes(self.app_data.data)
+            print("Voice settings saved.")
+            return True
+        except Exception as e:
+            print(f"Error saving voice settings: {e}")
+            return False
+
+    def _update_ui_feedback(self, info_items, state_msg="", items_msg="", ring_visible=False, clear_list=False,
+                            add_to_list_item_name=None):
+        if not info_items: return
+
+        if "state_info" in info_items and info_items["state_info"]:
+            info_items["state_info"].value = state_msg
+            info_items["state_info"].update()
+
+        if "items_to_read" in info_items and info_items["items_to_read"]:
+            info_items["items_to_read"].value = items_msg
+            info_items["items_to_read"].update()
+
+        if "progress_ring" in info_items and info_items["progress_ring"]:
+            info_items["progress_ring"].visible = ring_visible
+            info_items["progress_ring"].update()
+
+        audio_list_control = info_items.get("audio_files_list")
+        if audio_list_control and hasattr(audio_list_control, "controls"):
+            if clear_list:
+                audio_list_control.controls.clear()
+            if add_to_list_item_name:
+                # Assuming ft.Text is the type of control for list items
+                audio_list_control.controls.append(Text(add_to_list_item_name))
+            audio_list_control.update()
+
+    def generate_audio(self, file_extension: str, folder_dir: str, files_data: dict, info_items: dict):
+        if not self.engine or not self.current_voice_id:
+            err_msg = "Voice engine not ready or no voice selected. Cannot generate audio."
+            print(f"Error in generate_audio: {err_msg}")
+            self._update_ui_feedback(info_items, state_msg=err_msg, ring_visible=False)
+            return
+
+        self._update_ui_feedback(info_items, clear_list=True)
+
+        total_items = len(files_data)
+        if total_items == 0:
+            self._update_ui_feedback(info_items, state_msg="No text data found to process.", ring_visible=False)
+            return
+
+        all_successful = True
+        processed_item_idx = 0
+
+        for data_name, text_content in files_data.items():
+            processed_item_idx += 1
+
+            display_data_name = data_name[:25] + "..." if len(data_name) > 25 else data_name
+            current_item_msg = f"Item {processed_item_idx}/{total_items}"
+            print(f"\nProcessing {current_item_msg}: {data_name}")
+            self._update_ui_feedback(info_items,
+                                     state_msg=f"Generating: {display_data_name}",
+                                     items_msg=current_item_msg,
+                                     ring_visible=True)
+
+            zeros = ""
+            if file_extension.lower() != "txt":  # For EPUB/PDF chapters
+                if processed_item_idx <= 9:
+                    zeros = "00"
+                elif processed_item_idx <= 99:
+                    zeros = "0"
+
+            # Sanitize data_name for use in filename
+            safe_data_name = "".join(c if c.isalnum() or c in " .-_()" else "_" for c in data_name)
+            safe_data_name = safe_data_name[:100]  # Limit length
+
+            mp3_file_name = f"{zeros}{processed_item_idx} - {safe_data_name}.mp3" if file_extension.lower() != "txt" else f"{safe_data_name}.mp3"
+
+            if not os.path.exists(folder_dir):
+                try:
+                    os.makedirs(folder_dir, exist_ok=True)
+                except OSError as e:
+                    error_msg = f"Error creating folder {folder_dir}: {e}"
+                    print(error_msg)
+                    self._update_ui_feedback(info_items, state_msg=error_msg, ring_visible=False)
+                    all_successful = False
+                    continue  # Skip this item, try next
+
+            full_file_path = os.path.join(folder_dir, mp3_file_name)
 
             try:
-                # Ensure engine has the correct voice set (might be redundant if not changed elsewhere)
-                self.engine.setProperty("voice", self.current_voice.id)
-                self.engine.save_to_file(text_to_read, final_output_path)
+                # Voice and rate are already set on the engine instance
+                self.engine.save_to_file(text_content, full_file_path)
                 self.engine.runAndWait()
-                print("Successfully saved: {}".format(final_output_path))
-            except RuntimeError as e:
-                print("RuntimeError generating audio for {}: {}".format(item_name, e))
+
+                self._update_ui_feedback(info_items, add_to_list_item_name=mp3_file_name)
+                print(f"Done! File saved as {full_file_path}")
+
             except Exception as e:
-                print("Unexpected error generating audio for {}: {}".format(item_name, e))
+                error_msg = f"Error saving {mp3_file_name}: {e}"
+                print(error_msg)
+                # Update state_info for this specific error, but it might be overwritten
+                self._update_ui_feedback(info_items, state_msg=f"Error on {display_data_name}",
+                                         items_msg=current_item_msg)
+                all_successful = False
 
-# Remove the old Voice class if it's no longer needed.
-# Based on the refactoring, its `read` method is now `VoiceManager.generate_speech_audio`.
+        final_state_message = f"Finished {total_items} items."
+        if not all_successful:
+            final_state_message += " Some errors occurred (see console)."
 
-__all__ = ['VoiceManager', 'load_voice_config', 'save_voice_config']
+        self._update_ui_feedback(info_items,
+                                 state_msg=final_state_message,
+                                 items_msg="Processing complete.",
+                                 ring_visible=False)
